@@ -1,0 +1,39 @@
+#ssh sp001@syspharm-0-3.local -Y 
+#cd /spstorage/INTERNSHIP/
+#cd sehan/
+#R
+
+
+#원래 창
+save(vsdata_1, file='rrr.RData')
+#새 창
+load('rrr.RData')
+ls()
+
+library(DESeq2)
+
+#원래 창
+save(res_CMP_MEP, file='rrr.RData')
+#새 창
+load('rrr.RData')
+ls()
+
+plotPCA(vsdata_1, intgroup="index_1")  
+head(res_CMP_MEP)
+res_CMP_MEP = as.data.frame(res_CMP_MEP)
+plot(log2(res_CMP_MEP$baseMean), res_CMP_MEP$log2FoldChange)
+par(new=TRUE)
+
+library(dplyr)
+fi = res_CMP_MEP %>% filter(abs(log2FoldChange) >1, padj < 0.05)
+dim(fi)
+
+plot(log2(fi$baseMean), fi$log2FoldChange)
+plot(log2(fi$baseMean), fi$log2FoldChange, col ='red')
+plot(log2(res_CMP_MEP$baseMean), res_CMP_MEP$log2FoldChange, xlim = c(0,20), ylim=c(-10, 10))
+
+par(new=TRUE)
+plot(log2(fi$baseMean), fi$log2FoldChange, xlim = c(0,20), ylim=c(-10, 10), col = 'red')
+plot(log2(res_CMP_MEP$baseMean), res_CMP_MEP$log2FoldChange, xlim = c(0,20), ylim=c(-10, 10), pc> plot(log2(res_CMP_MEP$baseMean), res_CMP_MEP$log2FoldChange, xlim = c(0,20), ylim=c(-10, 10), pc> par(new=TRUE)
+plot(log2(fi$baseMean), fi$log2FoldChange, xlim = c(0,20), ylim=c(-10, 10), col = 'red', pch=20)> q()
+
