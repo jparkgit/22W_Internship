@@ -1,0 +1,5 @@
+$ sudo apt-get install xfonts-75dpi
+$ sudo apt-get install xfonts-100dpi
+
+원래 R창
+options(bitmapType='cairo')
