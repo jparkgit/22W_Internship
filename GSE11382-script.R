@@ -180,3 +180,15 @@ resultsNames(dds_HSC_CMP) #coef 확인
 res_HSC_CMP_LFC <- lfcShrink(dds_HSC_CMP, 
 	coef="index_1_hematopoietic_stem_cells_vs_common_myeloid_progenitors", type="apeglm")
 res_HSC_CMP_LFC
+
+## MA-Plot (CMP -> GMP)
+
+plotMA(res_CMP_GMP)
+plotMA(res_CMP_GMP, ylim=c(-2,2))
+
+
+
+## MA-plot (CMP -> MEP) 
+plotMA(res_CMP_MEP)
+plotMA(res_CMP_MEP, ylim=c(-2,2))
+
