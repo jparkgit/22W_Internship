@@ -1,9 +1,9 @@
-### TPM GENELENGTH 파일 불러와서 다시
+############
+## TPM 자료 만들기
 load('/spstorage/USERS/sung/projects/DEGanalysis/Genelength.RData')
 head(genelength)
 
 head(GSE11382_pcg)
-
 
 genelength_1 <- rownames_to_column(genelength, var='Feature.ID')
 head(genelength_1)
@@ -22,8 +22,9 @@ tpm <- function(counts, lengths){
 }
 
 GSE11382_tpm_counts <- tpm(GSE11382_counts, GSE11382_genes$length)
-head(GSE11382_tpm)
+head(GSE11382_tpm_counts)
 
-GSE11382_tpm <- data.frame(GSE11382_genes$Feature.ID, GSE11382_counts)
+GSE11382_tpm <- data.frame(GSE11382_genes$Feature.ID, GSE11382_tpm_counts)
 colnames(GSE11382_tpm)[1] <- 'Feature.ID'
 head(GSE11382_tpm)
+############
