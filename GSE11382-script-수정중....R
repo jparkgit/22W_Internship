@@ -296,31 +296,42 @@ library(pheatmap)
 pheatmap(GSE11382_random_matrix, scale="row")
 
 # Grouping by ID
+GSE11382_random <- GSE11382_tpmcut1 %>% sample_n(100)
 #ID132
-GSE11382_random_CMP <- GSE11382_random %>% select(contains("ID132"))
-rownames(GSE11382_random_CMP) <- GSE11382_tpmcut1$Feature.ID
-GSE11382_random_matrix_CMP <- as.matrix(GSE11382_random_CMP)
-heatmap(GSE11382_random_matrix_CMP, scale = "row")
+GSE11382_random_132 <- GSE11382_random %>% select(contains("ID132"))
+rownames(GSE11382_random_132) <- GSE11382_tpmcut1$Feature.ID
+GSE11382_random_matrix_132 <- as.matrix(GSE11382_random_132)
+heatmap(GSE11382_random_matrix_132, scale = "row")
+library(pheatmap)
+pheatmap(GSE11382_random_matrix_132, scale="row")
+
 #ID185
-GSE11382_random_CMP <- GSE11382_random %>% select(contains("ID185"))
-rownames(GSE11382_random_CMP) <- GSE11382_tpmcut1$Feature.ID
-GSE11382_random_matrix_CMP <- as.matrix(GSE11382_random_CMP)
-heatmap(GSE11382_random_matrix_CMP, scale = "row")
+GSE11382_random_185 <- GSE11382_random %>% select(contains("ID185"))
+rownames(GSE11382_random_185) <- GSE11382_tpmcut1$Feature.ID
+GSE11382_random_matrix_185 <- as.matrix(GSE11382_random_185)
+heatmap(GSE11382_random_matrix_185, scale = "row")
+pheatmap(GSE11382_random_matrix_185, scale="row")
 #ID234
-GSE11382_random_CMP <- GSE11382_random %>% select(contains("ID234"))
-rownames(GSE11382_random_CMP) <- GSE11382_tpmcut1$Feature.ID
-GSE11382_random_matrix_CMP <- as.matrix(GSE11382_random_CMP)
-heatmap(GSE11382_random_matrix_CMP, scale = "row")
+GSE11382_random_234 <- GSE11382_random %>% select(contains("ID234"))
+rownames(GSE11382_random_234) <- GSE11382_tpmcut1$Feature.ID
+GSE11382_random_matrix_234 <- as.matrix(GSE11382_random_234)
+heatmap(GSE11382_random_matrix_234, scale = "row")
+library(pheatmap)
+pheatmap(GSE11382_random_matrix_234, scale="row")
 #ID235
-GSE11382_random_CMP <- GSE11382_random %>% select(contains("ID235"))
-rownames(GSE11382_random_CMP) <- GSE11382_tpmcut1$Feature.ID
-GSE11382_random_matrix_CMP <- as.matrix(GSE11382_random_CMP)
-heatmap(GSE11382_random_matrix_CMP, scale = "row")
+GSE11382_random_235 <- GSE11382_random %>% select(contains("ID235"))
+rownames(GSE11382_random_235) <- GSE11382_tpmcut1$Feature.ID
+GSE11382_random_matrix_235 <- as.matrix(GSE11382_random_235)
+heatmap(GSE11382_random_matrix_235, scale = "row")
+library(pheatmap)
+pheatmap(GSE11382_random_matrix_235, scale="row")
 #ID236
-GSE11382_random_CMP <- GSE11382_random %>% select(contains("ID236"))
-rownames(GSE11382_random_CMP) <- GSE11382_tpmcut1$Feature.ID
-GSE11382_random_matrix_CMP <- as.matrix(GSE11382_random_CMP)
-heatmap(GSE11382_random_matrix_CMP, scale = "row")
+GSE11382_random_236 <- GSE11382_random %>% select(contains("ID236"))
+rownames(GSE11382_random_236) <- GSE11382_tpmcut1$Feature.ID
+GSE11382_random_matrix_236 <- as.matrix(GSE11382_random_236)
+heatmap(GSE11382_random_matrix_236, scale = "row")
+library(pheatmap)
+pheatmap(GSE11382_random_matrix_236, scale="row")
 
 	   
 
