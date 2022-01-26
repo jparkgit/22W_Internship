@@ -241,15 +241,6 @@ index <- c(rep(c("common_myeloid_progenitors","granulocyte-macrophage_progenitor
 metadata <- data.frame(index)
 rownames(metadata) <- colnames(GSE11382_tpm)[-1]
 
-# GSE11382_tpmcut_sample <- GSE11382_tpmcut %>% sample_n(1000)
-# tsne_tpm <- Rtsne(GSE11382_tpm_sample, perplexity=10, check_duplicates=FALSE)
-# plot(tsne_tpm$Y, col = "black", bg = metadata$index, pch = 21, cex = 1)
-
-# library(tsne)
-# GSE11382_tpm_1 <- tsne(as.matrix(GSE11382_tpmcut[,-1]))
-# GSE11382_tpm_1_1 <- GSE11382_tpm_1 %>% as.data.frame() %>% tbl_df() %>% mutate()
-
-
 GSE11382_tpmcut_1 <- GSE11382_tpmcut[,-1] #Feature.ID 제거
 GSE11382_tpmcut_2 = GSE11382_tpmcut_1 %>% t() #행, 열 바꾸기
 
@@ -257,13 +248,40 @@ pca_tpmcut <- prcomp(GSE11382_tpmcut_2, scale. = TRUE) #pca 구하기
 summary(pca_tpmcut)
 
 pca_x_df1<- pca_tpmcut$x %>% as.data.frame() #pca x 자료만 데이터프레임화
-pca_x_df2 <- rownames_to_column(pca_x_df, var='index')
+pca_x_df2 <- rownames_to_column(pca_x_df1, var='index')
 rownames(pca_x_df2) <- rownames(pca_x_df1)
 
 pca_x_df <- pca_x_df2 %>% separate(index, into = c("dex","IDnum"), sep="_") %>% select(-IDnum)
 
 #plot 그리기
 pca_x_df %>% ggplot(aes(x = PC1, y = PC2, color = dex)) + geom_point()
+
+
+#hematopoietic_stem_cells 제외
+index_not_hsc <- c(rep(c("common_myeloid_progenitors","granulocyte-macrophage_progenitors",
+	"megakaryocyte-erythrocyte_progenitors"),c(3,3,3)), rep(c(
+	"common_myeloid_progenitors","granulocyte-macrophage_progenitors",
+	"megakaryocyte-erythrocyte_progenitors"),c(2,2,2)))
+metadata_not_hsc <- data.frame(index_not_hsc)
+rownames(metadata_not_hsc) <- colnames(GSE11382_tpm)[-c(1,8:10,18:19)]
+
+GSE11382_tpmcut_not_hsc <- GSE11382_tpmcut[,-c(1,8:10,18:19)] %>% t()
+
+pca_tpmcut_not_hsc <- prcomp(GSE11382_tpmcut_not_hsc, scale. = TRUE) #pca 구하기
+summary(pca_tpmcut_not_hsc)
+
+pca_x_df_not_hsc_1 <- pca_tpmcut_not_hsc$x %>% as.data.frame() #pca x 자료만 데이터프레임화
+pca_x_df_not_hsc_2 <- rownames_to_column(pca_x_df_not_hsc_1, var='index')
+rownames(pca_x_df_not_hsc_2) <- rownames(pca_x_df_not_hsc_1)
+
+pca_x_df_not_hsc <- pca_x_df_not_hsc_2 %>%
+	separate(index, into = c("dex","IDnum"), sep="_") %>% select(-IDnum)
+
+#plot 그리기
+pca_x_df_not_hsc %>% ggplot(aes(x = PC1, y = PC2, color = dex)) +
+	geom_point() +
+	labs(x = "PC1: 45% variance", y = "PC2: 14% variance",
+		title = "PCA-plot", subtitle = "except HSC")
 ############
 
 
@@ -284,6 +302,19 @@ tsne_tpm_t_df <- data.frame(tsne_tpm_t_df, index)
 head(tsne_tpm_t_df)
 
 tsne_tpm_t_df %>% ggplot(aes(x = V1, y = V2, color=index)) + geom_point()
+
+#hematopoietic_stem_cells 제외
+set.seed(2022)
+GSE11382_tpmcut_not_hsc <- GSE11382_tpmcut %>% select(-Feature.ID) %>% select(-contains('HSC')) %>% t()
+tsne_tpm_not_hsc <- Rtsne(GSE11382_tpmcut_not_hsc, perplexity=2, check_duplicates=FALSE)
+
+tsne_tpm_not_hsc_df <- as.data.frame(tsne_tpm_not_hsc$Y) #데이터프레임화
+tsne_tpm_not_hsc_df <- data.frame(tsne_tpm_not_hsc_df, index_not_hsc)
+head(tsne_tpm_not_hsc_df)
+
+tsne_tpm_not_hsc_df %>% ggplot(aes(x = V1, y = V2, color=index_not_hsc)) +
+	geom_point() +
+	ggtitle('t-SNE-Plot', subtitle = 'except HSC')
 ############
 
 
