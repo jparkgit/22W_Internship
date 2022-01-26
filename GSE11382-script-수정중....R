@@ -12,7 +12,7 @@ ID <- c("CMP_ID236","CMP_ID235", "CMP_ID185", "GMP_ID236","GMP_ID235","GMP_ID185
 	"HSC_ID236","HSC_ID235","HSC_ID185","MEP_ID236","MEP_ID235","MEP_ID185",
 	"CMP_ID132","CMP_ID234","GMP_ID132","GMP_ID234","HSC_ID132", "HSC_ID234","MEP_ID132","MEP_ID234")
 
-index <- rep(c("common_myeloid_progenitors","granulocyte-macrophage_progenitors"
+index <- rep(c("common_myeloid_progenitors","granulocyte-macrophage_progenitors",
 	"hematopoietic_stem_cells","megakaryocyte-erythrocyte_progenitors"),each=3), rep(c(
 	"common_myeloid_progenitors","granulocyte-macrophage_progenitors","hematopoietic_stem_cells",
 	"megakaryocyte-erythrocyte_progenitors"),each=2)
