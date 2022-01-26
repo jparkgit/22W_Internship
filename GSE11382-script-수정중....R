@@ -12,10 +12,10 @@ ID <- c("CMP_ID236","CMP_ID235", "CMP_ID185", "GMP_ID236","GMP_ID235","GMP_ID185
 	"HSC_ID236","HSC_ID235","HSC_ID185","MEP_ID236","MEP_ID235","MEP_ID185",
 	"CMP_ID132","CMP_ID234","GMP_ID132","GMP_ID234","HSC_ID132", "HSC_ID234","MEP_ID132","MEP_ID234")
 
-index <- rep(c("common_myeloid_progenitors","granulocyte-macrophage_progenitors",
-	"hematopoietic_stem_cells","megakaryocyte-erythrocyte_progenitors"),each=3), rep(c(
+index <- c(rep(c("common_myeloid_progenitors","granulocyte-macrophage_progenitors",
+	"hematopoietic_stem_cells","megakaryocyte-erythrocyte_progenitors"),c(3,3,3,3)), rep(c(
 	"common_myeloid_progenitors","granulocyte-macrophage_progenitors","hematopoietic_stem_cells",
-	"megakaryocyte-erythrocyte_progenitors"),each=2)
+	"megakaryocyte-erythrocyte_progenitors"),c(2,2,2,2)))
 
 metadata <- data.frame(index)
 rownames(metadata) <- ID
@@ -99,8 +99,9 @@ res_HSC_CMP %>% as.data.frame %>% filter(abs(log2FoldChange) > 1.5, padj < 0.05)
 #res_HSC_CMP %>% as.data.frame %>% filter(abs(log2FoldChange) > 2, padj < 0.05) %>% dim  #296
 #res_HSC_CMP %>% as.data.frame %>% filter(abs(log2FoldChange) > 2.5, padj < 0.05) %>% dim  #204
 
-RES_HSC_CMP <- results(dds_HSC_CMP, contrast=c("index_1", "hematopoietic_stem_cells", "common_myeloid_progenitors"))
-RES_HSC_CMP <- res_HSC_CMP %>% filter(abs(log2FoldChange) > 1.5, padj < 0.05)
+# RES_HSC_CMP <- results(dds_HSC_CMP, contrast=c("index_1", "hematopoietic_stem_cells",
+# 	"common_myeloid_progenitors"))
+RES_HSC_CMP <- res_HSC_CMP %>% as.data.frame() %>% filter(abs(log2FoldChange) > 1.5, padj < 0.05)
 
 # metadata_2 만들기 (CMP -> GMP)
 ID_2 <- c("CMP_ID236", "CMP_ID235", "CMP_ID185", "CMP_ID132", "CMP_ID234", "GMP_ID236",
@@ -233,8 +234,10 @@ dim(GSE11382_tpmcut)
 library(tidyverse)
 set.seed(2022)
 
-index <- rep(c("hematopoietic_stem_cells","common_myeloid_progenitors",
-	"granulocyte-macrophage_progenitors","megakaryocyte-erythrocyte_progenitors"), each=5)
+index <- c(rep(c("common_myeloid_progenitors","granulocyte-macrophage_progenitors",
+	"hematopoietic_stem_cells","megakaryocyte-erythrocyte_progenitors"),c(3,3,3,3)), rep(c(
+	"common_myeloid_progenitors","granulocyte-macrophage_progenitors","hematopoietic_stem_cells",
+	"megakaryocyte-erythrocyte_progenitors"),c(2,2,2,2)))
 metadata <- data.frame(index)
 rownames(metadata) <- colnames(GSE11382_tpm)[-1]
 
@@ -269,15 +272,18 @@ pca_x_df %>% ggplot(aes(x = PC1, y = PC2, color = dex)) + geom_point()
 library(Rtsne)
 #head(GSE11382_tpmcut)
 
-GSE11382_tpmcut_CMP <- GSE11382_tpmcut %>% select(contains("CMP"))
+#GSE11382_tpmcut_CMP <- GSE11382_tpmcut %>% select(contains("CMP"))
 
 #tpm 자료로 tsne 구하기
-tsne_tpm <- Rtsne(GSE11382_tpmcut, perplexity=10, check_duplicates=FALSE)
+set.seed(2022)
+GSE11382_tpmcut_t <- GSE11382_tpmcut %>% select(-Feature.ID) %>% t()
+tsne_tpm_t <- Rtsne(GSE11382_tpmcut_t, perplexity=2, check_duplicates=FALSE)
 
-tsne_tpm_df <- as.data.frame(tsne_tpm$Y) #데이터프레임화
-head(tsne_tpm_df)
+tsne_tpm_t_df <- as.data.frame(tsne_tpm_t$Y) #데이터프레임화
+tsne_tpm_t_df <- data.frame(tsne_tpm_t_df, index)
+head(tsne_tpm_t_df)
 
-tsne_tpm_df %>% ggplot(aes(x = V1, y = V2)) + geom_point()
+tsne_tpm_t_df %>% ggplot(aes(x = V1, y = V2, color=index)) + geom_point()
 ############
 
 
@@ -295,44 +301,65 @@ heatmap(GSE11382_random_matrix, scale = "row")
 library(pheatmap)
 pheatmap(GSE11382_random_matrix, scale="row")
 
+
 # Grouping by ID
+library(pheatmap)
 GSE11382_random <- GSE11382_tpmcut1 %>% sample_n(100)
+
 #ID132
 GSE11382_random_132 <- GSE11382_random %>% select(contains("ID132"))
-rownames(GSE11382_random_132) <- GSE11382_tpmcut1$Feature.ID
+rownames(GSE11382_random_132) <- GSE11382_random$Feature.ID
 GSE11382_random_matrix_132 <- as.matrix(GSE11382_random_132)
+
 heatmap(GSE11382_random_matrix_132, scale = "row")
-library(pheatmap)
 pheatmap(GSE11382_random_matrix_132, scale="row")
 
 #ID185
 GSE11382_random_185 <- GSE11382_random %>% select(contains("ID185"))
 rownames(GSE11382_random_185) <- GSE11382_tpmcut1$Feature.ID
 GSE11382_random_matrix_185 <- as.matrix(GSE11382_random_185)
+
 heatmap(GSE11382_random_matrix_185, scale = "row")
-library(pheatmap)
 pheatmap(GSE11382_random_matrix_185, scale="row")
+
 #ID234
 GSE11382_random_234 <- GSE11382_random %>% select(contains("ID234"))
 rownames(GSE11382_random_234) <- GSE11382_tpmcut1$Feature.ID
 GSE11382_random_matrix_234 <- as.matrix(GSE11382_random_234)
+
 heatmap(GSE11382_random_matrix_234, scale = "row")
 pheatmap(GSE11382_random_matrix_234, scale="row")
+
 #ID235
 GSE11382_random_235 <- GSE11382_random %>% select(contains("ID235"))
 rownames(GSE11382_random_235) <- GSE11382_tpmcut1$Feature.ID
 GSE11382_random_matrix_235 <- as.matrix(GSE11382_random_235)
+
 heatmap(GSE11382_random_matrix_235, scale = "row")
 pheatmap(GSE11382_random_matrix_235, scale="row")
+
 #ID236
 GSE11382_random_236 <- GSE11382_random %>% select(contains("ID236"))
 rownames(GSE11382_random_236) <- GSE11382_tpmcut1$Feature.ID
 GSE11382_random_matrix_236 <- as.matrix(GSE11382_random_236)
+
 heatmap(GSE11382_random_matrix_236, scale = "row")
 pheatmap(GSE11382_random_matrix_236, scale="row")
-
-	   
-
-head(GSE11382_tpmcut1)
-dim(GSE11382_tpmcut1)
 ############
+
+
+####
+#PCA
+# tpmcut_round <- round(GSE11382_tpmcut_1)
+# GSE11382_tpmround <- data.frame(GSE11382_tpmcut$Feature.ID, tpmcut_round)
+# colnames(GSE11382_tpmround)[1] <- 'Feature.ID'
+
+# dds_round <- DESeqDataSetFromMatrix(countData = GSE11382_tpmround,
+#                                colData = metadata,
+#                                design = ~index, tidy = TRUE)
+# dds_tpmround <- DESeq(dds_round)
+# res_tpmround <- results(dds_tpmround)
+# head(res_tpmround)
+
+# vsdata_round <- vst(dds_round, blind = FALSE) 
+# plotPCA(vsdata_round, intgroup="index")
