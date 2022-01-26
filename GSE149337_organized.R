@@ -114,9 +114,12 @@ colnames(meta_total)[1] <- 'index'
 library(tidyverse)
 set.seed(2022)
 
+ips_pcg <- gse149377_tpm %>% select(ensembl_gene_id, contains("IPS"))
+pbmc_pcg <- gse149377_tpm %>% select(ensembl_gene_id, contains("PBMC"))
 
-gse149377_tpmcut_1 <- gse149377_tpm[,-1] #Feature.ID 제거
-dim(gse149377_tpmcut_1) # 17172 50
+
+gse149377_tpmcut_1 <- gse149377_tpmcut[,-1] #Feature.ID 제거
+dim(gse149377_tpmcut_1) # 10771 50
 gse149377_tpmcut_2 = gse149377_tpmcut_1 %>% t() #행, 열 바꾸기
 dim(gse149377_tpmcut_2) # 50 17172
 
@@ -124,12 +127,14 @@ pca_tpmcut <- prcomp(gse149377_tpmcut_2) #pca 구하기
 summary(pca_tpmcut)
 
 
-pca_x_df1<- pca_tpmcut$x %>% as.data.frame() #pca x 자료만 데이터프레임화
-pca_x_df2 <- rownames_to_column(pca_x_df, var='index')
-rownames(pca_x_df2) <- rownames(pca_x_df1)
+pca_x_df1 <- pca_tpmcut$x %>% as.data.frame() #pca x 자료만 데이터프레임화
+pca_x_df2 <- rownames_to_column(pca_x_df1, var='index') #df1의 rownames을 df2에게 index라는 column으로 주기
+rownames(pca_x_df2) <- rownames(pca_x_df1)  #df1의 rownames을 df2의 rownames로 주기
 
-pca_x_df <- meta_total %>% inner_join(pca_x_df2, by = "index")
+pca_x_df <- meta_total %>% inner_join(pca_x_df2, by = "index") #df2와 meta total을 index를 겹쳐서 join시키기
+
 pca_x_df %>% ggplot(aes(x = PC1, y = PC2, color = index0)) + geom_point()
+pca_x_df %>% ggplot(aes(x = PC1, y = PC2, color = index1)) + geom_point()
 
 
 
@@ -151,8 +156,7 @@ pca_x_df %>% ggplot(aes(x = PC1, y = PC2, color = index0)) + geom_point()
 
 ### IPS vs PMBC #############################################################################
 ### 여기서부터 PBMC, IPS 나눠서 작업: create separate data for each tye
-ips_pcg <- gse149377_tpm %>% select(ensembl_gene_id, contains("IPS"))
-pbmc_pcg <- gse149377_tpm %>% select(ensembl_gene_id, contains("PBMC"))
+
 
 # m0
 temp <- pbmc_pcg %>% select(ensembl_gene_id, contains("m0"))
