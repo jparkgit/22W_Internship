@@ -287,11 +287,9 @@ tsne_tpm_df %>% ggplot(aes(x = V1, y = V2)) + geom_point()
 GSE11382_tpmcut1 <- GSE11382_tpm %>% mutate(rowmeans = rowMeans(GSE11382_tpm[,-1])) %>%
 	filter(rowmeans > 10) %>% select(-rowmeans)
 set.seed(2022)
-GSE11382_random <- GSE11382_tpmcut1 %>% sample_n(100)
-GSE11382_random_mt <- as.matrix(GSE11382_random)
-rownames(GSE11382_random_mt) <- GSE11382_random$Feature.ID
-GSE11382_random_matrix <- GSE11382_random_mt %>% as.data.frame() %>% select(-Feature.ID) %>% as.matrix()
-
+GSE11382_random <- GSE11382_tpmcut1 %>% sample_n(300)
+GSE11382_random_matrix <- GSE11382_random %>% select(-Feature.ID) %>% as.matrix()
+rownames(GSE11382_random_matrix) <- GSE11382_random$Feature.ID
 
 heatmap(GSE11382_random_matrix, scale = "row")
 library(pheatmap)
