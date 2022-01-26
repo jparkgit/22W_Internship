@@ -12,14 +12,10 @@ ID <- c("CMP_ID236","CMP_ID235", "CMP_ID185", "GMP_ID236","GMP_ID235","GMP_ID185
 	"HSC_ID236","HSC_ID235","HSC_ID185","MEP_ID236","MEP_ID235","MEP_ID185",
 	"CMP_ID132","CMP_ID234","GMP_ID132","GMP_ID234","HSC_ID132", "HSC_ID234","MEP_ID132","MEP_ID234")
 
-index <- c("common_myeloid_progenitors","common_myeloid_progenitors","common_myeloid_progenitors",
-	"granulocyte-macrophage_progenitors","ggranulocyte-macrophage_progenitors",
-	"granulocyte-macrophage_progenitors","hematopoietic_stem_cells","hematopoietic_stem_cells",
-	"hematopoietic_stem_cells","megakaryocyte-erythrocyte_progenitors",
-	"megakaryocyte-erythrocyte_progenitors","megakaryocyte-erythrocyte_progenitors",
-	"common_myeloid_progenitors","common_myeloid_progenitors","granulocyte-macrophage_progenitors",
-	"granulocyte-macrophage_progenitors","hematopoietic_stem_cells","hematopoietic_stem_cells",
-	"megakaryocyte-erythrocyte_progenitors","megakaryocyte-erythrocyte_progenitors")
+index <- c(rep(c("common_myeloid_progenitors","granulocyte-macrophage_progenitors"
+	"hematopoietic_stem_cells","megakaryocyte-erythrocyte_progenitors"),each=3), rep(c(
+	"common_myeloid_progenitors","granulocyte-macrophage_progenitors","hematopoietic_stem_cells",
+	"megakaryocyte-erythrocyte_progenitors"),each=2)
 
 metadata <- data.frame(index)
 rownames(metadata) <- ID
@@ -27,7 +23,7 @@ rownames(metadata) <- ID
 
 
 ############
-## Pre-filtering [PCG filtering]
+## Pre-filtering (Protein coding gene filtering)
 # 전체 유전자의 info가 담긴 gmt파일을 불러와 그중 pcg만 필터링
 library(dplyr)
 
@@ -103,8 +99,8 @@ res_HSC_CMP %>% as.data.frame %>% filter(abs(log2FoldChange) > 1.5, padj < 0.05)
 #res_HSC_CMP %>% as.data.frame %>% filter(abs(log2FoldChange) > 2, padj < 0.05) %>% dim  #296
 #res_HSC_CMP %>% as.data.frame %>% filter(abs(log2FoldChange) > 2.5, padj < 0.05) %>% dim  #204
 
-#RES_HSC_CMP <- results(dds_HSC_CMP, contrast=c("index_1", "hematopoietic_stem_cells", "common_myeloid_progenitors"))
-
+RES_HSC_CMP <- results(dds_HSC_CMP, contrast=c("index_1", "hematopoietic_stem_cells", "common_myeloid_progenitors"))
+RES_HSC_CMP <- res_HSC_CMP %>% filter(abs(log2FoldChange) > 1.5, padj < 0.05)
 
 # metadata_2 만들기 (CMP -> GMP)
 ID_2 <- c("CMP_ID236", "CMP_ID235", "CMP_ID185", "CMP_ID132", "CMP_ID234", "GMP_ID236",
@@ -175,93 +171,139 @@ plotMA(res_CMP_MEP, ylim=c(-2,2))
 # res_HSC_CMP_LFC
 
 
+# ############
+# ## PCA plot 그리기 
+# #HSC -> CMP
+# vsdata_1 <- vst(dds_HSC_CMP, blind = FALSE) 
+# plotPCA(vsdata_1, intgroup="index_1")
+
+# #CMP -> GMP
+# vsdata_2 <- vst(dds_CMP_GMP, blind = FALSE) 
+# plotPCA(vsdata_2, intgroup="index_2")
+
+# #CMP -> MEP
+# vsdata_3 <- vst(dds_CMP_MEP, blind = FALSE) 
+# plotPCA(vsdata_3, intgroup="index_3")
 ############
-## PCA plot 그리기 
-#HSC -> CMP
-vsdata_1 <- vst(dds_HSC_CMP, blind = FALSE) 
-plotPCA(vsdata_1, intgroup="index_1")
 
-#CMP -> GMP
-vsdata_2 <- vst(dds_CMP_GMP, blind = FALSE) 
-plotPCA(vsdata_2, intgroup="index_2")
 
-#CMP -> MEP
-vsdata_3 <- vst(dds_CMP_MEP, blind = FALSE) 
-plotPCA(vsdata_3, intgroup="index_3")
+############
+## TPM 자료 만들기
+library(tibble)
+load('/spstorage/USERS/sung/projects/DEGanalysis/Genelength.RData') #유전자 size data upload
+head(genelength)
+
+head(GSE11382_pcg)
+
+genelength_1 <- rownames_to_column(genelength, var='Feature.ID')
+head(genelength_1)
+
+#기존 pcg 자료에 length 열 합치기
+GSE11382_length <- GSE11382_pcg %>% left_join(genelength_1, by = "Feature.ID")
+
+GSE11382_genes <- GSE11382_length[,c(1,length(GSE11382_length))]
+head(GSE11382_genes)
+GSE11382_counts <- GSE11382_length[,-c(1,length(GSE11382_length))]
+head(GSE11382_counts)
+
+#tpm 구하는 함수
+tpm <- function(counts, lengths){
+	rate <- counts / lengths
+	rate / sum(rate) * 1e6
+}
+
+GSE11382_tpm_counts <- tpm(GSE11382_counts, GSE11382_genes$length)
+head(GSE11382_tpm_counts)
+
+#tpm dataframe 만들기
+GSE11382_tpm <- data.frame(GSE11382_genes$Feature.ID, GSE11382_tpm_counts)
+colnames(GSE11382_tpm)[1] <- 'Feature.ID'
+head(GSE11382_tpm)
+
+#유전자 발현 평균 2 이상 filtering
+GSE11382_tpmcut <- GSE11382_tpm %>% mutate(rowmeans = rowMeans(GSE11382_tpm[,-1])) %>%
+	filter(rowmeans > 2) %>% select(-rowmeans)
+head(GSE11382_tpmcut)
+dim(GSE11382_tpmcut)
 ############
 
 
 ############
-## t-SNE
-library(Rtsne)
+# PCA-Plot Plotting
+library(tidyverse)
+set.seed(2022)
 
-#whole data로 DESeq
-whole_data <- GSE11382_HSC %>% inner_join(GSE11382_CMP, by = "Feature.ID") %>%
-	inner_join(GSE11382_GMP, by = "Feature.ID") %>% inner_join(GSE11382_MEP, by = "Feature.ID")
-
-ID <- colnames(whole_data)[-1]
 index <- rep(c("hematopoietic_stem_cells","common_myeloid_progenitors",
 	"granulocyte-macrophage_progenitors","megakaryocyte-erythrocyte_progenitors"), each=5)
 metadata <- data.frame(index)
-rownames(metadata) <- ID
+rownames(metadata) <- colnames(GSE11382_tpm)[-1]
 
-dds <- DESeqDataSetFromMatrix(countData = whole_data ,
-                               colData = metadata,
-                               design = ~index, tidy = TRUE)
-dds_whole <- DESeq(dds)
-res_whole <- results(dds_whole)
-head(res_whole)
+# GSE11382_tpmcut_sample <- GSE11382_tpmcut %>% sample_n(1000)
+# tsne_tpm <- Rtsne(GSE11382_tpm_sample, perplexity=10, check_duplicates=FALSE)
+# plot(tsne_tpm$Y, col = "black", bg = metadata$index, pch = 21, cex = 1)
 
-res_whole %>% as.data.frame %>% filter(abs(log2FoldChange) > 1, padj < 0.05) %>% dim   
-RES_WHOLE <- res_whole %>% as.data.frame %>% filter(abs(log2FoldChange) > 1, padj < 0.05) 
-
-rownames_all <- RES_WHOLE %>% rownames
-WHOLE_DEG <- whole_data %>% filter(Feature.ID %in% rownames_all)
-
-tsne_WHOLE <- Rtsne(WHOLE_DEG, perplexity=30, check_duplicates=FALSE)
-plot(tsne_WHOLE$Y, col = "black", bg = metadata$index, pch = 21, cex = 1)
-tsne_WHOLE <- Rtsne(WHOLE_DEG, perplexity=10, check_duplicates=FALSE)
-plot(tsne_WHOLE$Y, col = "black", bg = metadata$index, pch = 21, cex = 1)
+# library(tsne)
+# GSE11382_tpm_1 <- tsne(as.matrix(GSE11382_tpmcut[,-1]))
+# GSE11382_tpm_1_1 <- GSE11382_tpm_1 %>% as.data.frame() %>% tbl_df() %>% mutate()
 
 
+GSE11382_tpmcut_1 <- GSE11382_tpmcut[,-1] #Feature.ID 제거
+GSE11382_tpmcut_2 = GSE11382_tpmcut_1 %>% t() #행, 열 바꾸기
+
+pca_tpmcut <- prcomp(GSE11382_tpmcut_2, scale. = TRUE) #pca 구하기
+summary(pca_tpmcut)
+
+pca_x_df1<- pca_tpmcut$x %>% as.data.frame() #pca x 자료만 데이터프레임화
+pca_x_df2 <- rownames_to_column(pca_x_df, var='index')
+rownames(pca_x_df2) <- rownames(pca_x_df1)
+
+pca_x_df <- pca_x_df2 %>% separate(index, into = c("dex","IDnum"), sep="_") %>% select(-IDnum)
+
+#plot 그리기
+pca_x_df %>% ggplot(aes(x = PC1, y = PC2, color = dex)) + geom_point()
+############
 
 
+############
+# t-SNE
+library(Rtsne)
+#head(GSE11382_tpmcut)
 
-### TPM
-tpm <- function(counts, lengths){
-	rpk <- counts/(lengths/1000)
-	coef <- sum(rpk)
-	rpk/coef
-}
-tpms <- apply(counts, 2, function(x) tpm(x, lenghts))
+GSE11382_tpmcut_CMP <- GSE11382_tpmcut %>% select(contains("CMP"))
 
+#tpm 자료로 tsne 구하기
+tsne_tpm <- Rtsne(GSE11382_tpmcut, perplexity=10, check_duplicates=FALSE)
 
+tsne_tpm_df <- as.data.frame(tsne_tpm$Y) #데이터프레임화
+head(tsne_tpm_df)
 
-##Counting TPM
-summary(whole_data[,2:length(whole_data)])
-geneLengths <- as.vector(subset(whole_data, select = c(-Feature.ID)))
-
-rpk <- apply(subset(whole_data, select = c(-Feature.ID)), 2,
-	function(x) x/(geneLengths/1000))
-tpm <- apply(rpk, 2, function(x) x/sum(as.numeric(x)) * 10^6)
-
-# HSC_CMP_sample <- HSC_CMP %>% sample_n(100)
-# tsne_HSC_CMP <- Rtsne(HSC_CMP_sample, perplexity=30, check_duplicates=FALSE)
+tsne_tpm_df %>% ggplot(aes(x = V1, y = V2)) + geom_point()
+############
 
 
-# RES_HSC_CMP <- res_HSC_CMP %>% as.data.frame %>% filter(abs(log2FoldChange) > 1.5, padj < 0.05)
-# rownames_1 <- RES_HSC_CMP %>% rownames
-# HSC_CMP_DEG <- HSC_CMP %>% filter(Feature.ID %in% rownames_1)
+############
+## Heatmap 그리기
+# 발현량 평균 높은 유전자만 뽑아내기
+GSE11382_tpmcut1 <- GSE11382_tpm %>% mutate(rowmeans = rowMeans(GSE11382_tpm[,-1])) %>%
+	filter(rowmeans > 10) %>% select(-rowmeans)
+set.seed(2022)
+GSE11382_random <- GSE11382_tpmcut1 %>% sample_n(100)
+GSE11382_random_mt <- as.matrix(GSE11382_random)
+rownames(GSE11382_random_mt) <- GSE11382_random$Feature.ID
+GSE11382_random_matrix <- GSE11382_random_mt %>% as.data.frame() %>% select(-Feature.ID) %>% as.matrix()
 
-# tsne_HSC_CMP <- Rtsne(HSC_CMP_DEG, perplexity=30, check_duplicates=FALSE)
 
-# plot(tsne_HSC_CMP$Y, col = "black", bg = metadata_1$index_1, pch = 21, cex = 1)
+heatmap(GSE11382_random_matrix, scale = "row")
+library(pheatmap)
+pheatmap(GSE11382_random_matrix, scale="row")
+
+# Grouping by ID
+GSE11382_random_CMP <- GSE11382_random %>% select(contains("ID235"))
+rownames(GSE11382_random_CMP) <- GSE11382_tpmcut1$Feature.ID
+GSE11382_random_matrix_CMP <- as.matrix(GSE11382_random_CMP)
+heatmap(GSE11382_random_matrix_CMP, scale = "row")
 
 
-
-# ###
-# whole_data <- GSE11382_HSC %>% inner_join(GSE11382_CMP, by = "Feature.ID") %>%
-# 	inner_join(GSE11382_GMP, by = "Feature.ID") %>% inner_join(GSE11382_MEP, by = "Feature.ID")
-# whole_data_sp <- whole_data %>% sample_n(1000)
-# tsne_whole <- Rtsne(whole_data_sp, perplexity=30, check_duplicates=FALSE)
-# plot(tsne_whole$Y, col = "black", bg = metadata$index, pch = 21, cex = 1)
+head(GSE11382_tpmcut1)
+dim(GSE11382_tpmcut1)
+############
