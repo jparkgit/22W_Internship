@@ -127,7 +127,7 @@ res_CMP_GMP %>% as.data.frame %>% filter(abs(log2FoldChange) > 1.5, padj < 0.05)
 
 #RES_CMP_GMP <- results(dds_CMP_GMP, contrast=c("index_2", "common_myeloid_progenitors", "granulocyte-macrophage_progenitors"))
 
-RES_CMP_GMP <- res_HSC_CMP %>% as.data.frame %>% filter(abs(log2FoldChange) > 1, padj < 0.05)
+RES_CMP_GMP <- res_CMP_GMP %>% as.data.frame %>% filter(abs(log2FoldChange) > 1, padj < 0.05)
 
 # metadata_3 만들기 (CMP -> MEP)
 ID_3 <- c("CMP_ID236", "CMP_ID235", "CMP_ID185", "CMP_ID132", "CMP_ID234", "MEP_ID236",
