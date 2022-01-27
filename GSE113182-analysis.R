@@ -306,3 +306,95 @@ tsne_excluding_hsc_df %>% ggplot(aes(x = V1, y = V2, color=index_excluding_hsc))
 RES_HSC_CMP <- res_HSC_CMP %>% as.data.frame %>% filter(abs(log2FoldChange) > 1.7, padj < 0.05)
 RES_CMP_GMP <- res_CMP_GMP %>% as.data.frame %>% filter(abs(log2FoldChange) > 1, padj < 0.05)
 RES_CMP_MEP <- res_CMP_MEP %>% as.data.frame %>% filter(abs(log2FoldChange) > 1, padj < 0.05)
+
+
+
+
+
+############
+RES_HSC_CMP <- RES_HSC_CMP %>% mutate(Feature.ID = rownames(RES_HSC_CMP)) %>%
+	select(Feature.ID, baseMean:padj)
+RES_CMP_GMP <- RES_CMP_GMP %>% mutate(Feature.ID = rownames(RES_CMP_GMP)) %>%
+	select(Feature.ID, baseMean:padj)
+
+RES_common_1 <- RES_HSC_CMP %>% inner_join(RES_CMP_GMP, by = "Feature.ID") #HSC->CMP->GMP DEG
+dim(RES_common_1) #56개
+
+RES_CMP_MEP <- RES_CMP_MEP %>% mutate(Feature.ID = rownames(RES_CMP_MEP)) %>%
+	select(Feature.ID, baseMean:padj)
+
+RES_common_2 <- RES_HSC_CMP %>% inner_join(RES_CMP_MEP, by = "Feature.ID") #HSC->CMP->MEP DEG
+dim(RES_common_2) #40개
+
+RES_common_3 <- RES_common_1 %>% inner_join(RES_common_2, by = "Feature.ID") #모든 과정 공통 DEG
+dim(RES_common_3) #23개
+RES_common_3$Feature.ID
+
+RES_HSC_CMP_name <- RES_HSC_CMP$Feature.ID
+RES_CMP_GMP_name <- RES_CMP_GMP$Feature.ID
+
+RES_common_1_name <- list(HSC_CMP = RES_HSC_CMP_name, CMP_GMP = RES_CMP_GMP_name)
+
+group.venn(list(HSC_CMP = RES_HSC_CMP_name, CMP_GMP = RES_CMP_GMP_name), label = TRUE,
+	lab.cex = 0.5, width = 20, height = 20)
+
+
+#상위,하위 DEG 200개씩 선별
+# HSC -> CMP
+updeg_HSC_CMP <- res_HSC_CMP %>% as.data.frame %>% filter(padj < 0.05) %>%
+	arrange(desc(log2FoldChange)) %>% head(200)
+downdeg_HSC_CMP <- res_HSC_CMP %>% as.data.frame %>% filter(padj < 0.05) %>% 
+	arrange(log2FoldChange) %>% head(200)
+deg_HSC_CMP <- rbind(updeg_HSC_CMP, downdeg_HSC_CMP)
+
+# CMP -> GMP
+updeg_CMP_GMP <- res_CMP_GMP %>% as.data.frame %>% filter(padj < 0.05) %>%
+	arrange(desc(log2FoldChange)) %>% head(200)
+downdeg_CMP_GMP <- res_CMP_GMP %>% as.data.frame %>% filter(padj < 0.05) %>% 
+	arrange(log2FoldChange) %>% head(200)
+deg_CMP_GMP <- rbind(updeg_CMP_GMP, downdeg_CMP_GMP)
+
+# CMP -> MEP
+updeg_CMP_MEP <- res_CMP_MEP %>% as.data.frame %>% filter(padj < 0.05) %>%
+	arrange(desc(log2FoldChange)) %>% head(200)
+downdeg_CMP_MEP <- res_CMP_MEP %>% as.data.frame %>% filter(padj < 0.05) %>% 
+	arrange(log2FoldChange) %>% head(200)
+deg_CMP_MEP <- rbind(updeg_CMP_MEP, downdeg_CMP_MEP)
+
+
+DEG_HSC_CMP <- deg_HSC_CMP %>% mutate(Feature.ID = rownames(deg_HSC_CMP)) %>%
+	select(Feature.ID, baseMean:padj)
+DEG_CMP_GMP <- deg_CMP_GMP %>% mutate(Feature.ID = rownames(deg_CMP_GMP)) %>%
+	select(Feature.ID, baseMean:padj)
+DEG_CMP_MEP <- deg_CMP_MEP %>% mutate(Feature.ID = rownames(deg_CMP_MEP)) %>%
+	select(Feature.ID, baseMean:padj)
+
+deg_common_1 <- DEG_HSC_CMP %>% inner_join(DEG_CMP_GMP, by = "Feature.ID") #HSC->CMP->GMP DEG
+dim(deg_common_1) #60개
+deg_common_2 <- DEG_HSC_CMP %>% inner_join(DEG_CMP_MEP, by = "Feature.ID") #HSC->CMP->MEP DEG
+dim(deg_common_2) #44개
+deg_common_3 <- deg_common_1 %>% inner_join(DEG_CMP_MEP, by = "Feature.ID") #모든 과정 공통 DEG
+dim(deg_common_3) #25개
+
+deg_common_3$Feature.ID
+RES_common_3$Feature.ID
+
+#UP, DOWN 구분안한 것과 구분한 것 중복 GENE 찾기
+DEG_name <- c(RES_common_3$Feature.ID, deg_common_3$Feature.ID)
+DEG_name[which(duplicated(DEG_name) == TRUE)]
+length(DEG_name[which(duplicated(DEG_name) == TRUE)])
+
+
+## log2FoldChange graph
+log2FC <- c(deg_common_3$log2FoldChange.x, deg_common_3$log2FoldChange.y, deg_common_3$log2FoldChange)
+index_stage <- rep(c("HSC->CMP", "CMP->GMP", "CMP->MEP"), c(25, 25, 25))
+index_stage <- factor(index_stage, levels = c("HSC->CMP","CMP->GMP", "CMP->MEP"))
+DEG_log2FC <- data.frame(deg_common_3$Feature.ID, log2FC, index_stage)
+
+DEG_log2FC %>% ggplot(aes(x = index_stage, y = log2FC, group = deg_common_3.Feature.ID,
+	color = deg_common_3.Feature.ID)) +
+	geom_point() +
+	geom_line() +
+	scale_color_discrete(name = "Feature.ID") + 
+	labs(x = 'Differentiation Stage', y = 'log2FoldChange',
+		title = 'log2FoldChange of DEG', subtitle = 'by Differentiation stage')
