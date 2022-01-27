@@ -1,0 +1,15 @@
+#Edit RAW file
+##import
+gse149377 <- read.delim(file="GSE149377_iPSCderived_myeloid_cells_counts.gct.gz", skip=2)
+
+##convert gene ids with biomart
+library(biomaRt)
+hu.ensembl = useMart(biomart = 'ensembl', dataset = 'hsapiens_gene_ensembl') 
+
+###Reference gene list: containing entrezgene id and ensembl gene id
+G_list <- getBM(attributes= c("entrezgene_id","ensembl_gene_id"),values=gse149377$Name, mart = hu.ensembl, useCache = FALSE)
+
+gse149377$ensembl_gene_id = ""
+gse149377["ensembl_gene_id"] = lapply("ensembl_gene_id", function(x) G_list[[x]][match(gse149377$Name, G_list$entrezgene_id)])
+
+
