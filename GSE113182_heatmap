@@ -1,0 +1,65 @@
+# 분화단계 별로 뽑은 DEG에 rowname 열 추가 
+RES_HSC_CMP1 <- RES_HSC_CMP %>% mutate(Feature.ID = rownames(RES_HSC_CMP)) %>% 
+         select(Feature.ID, baseMean:padj)
+head(RES_HSC_CMP1)
+
+
+RES_CMP_GMP1 <- RES_CMP_GMP %>% mutate(Feature.ID = rownames(RES_CMP_GMP)) %>%
+         	select(Feature.ID, baseMean:padj)
+
+ 
+RES_CMP_MEP1 <- RES_CMP_MEP %>% mutate(Feature.ID = rownames(RES_CMP_MEP)) %>%
+	select(Feature.ID, baseMean:padj)
+
+
+
+#HSC->CMP->GMP 겹치는 DEG 찾기 
+HSC_CMP_GMP2 <- RES_HSC_CMP1 %>% inner_join(RES_CMP_GMP1, by='Feature.ID')
+head(HSC_CMP_GMP2)
+dim #56개 
+subset(RES_HSC_CMP1, Feature.ID == "ENSG00000028137" )
+#logfold x -->  RES_HSC_CMP1/  log fold y --> RES_CMP_GMP1
+
+
+#HSC->CMP->MEP 겹치는 DEG 찾기 
+HSC_CMP_MEP2 <- RES_HSC_CMP1 %>% inner_join(RES_CMP_MEP1, by='Feature.ID') 
+head(HSC_CMP_MEP2)
+dim #40개 
+subset(RES_CMP_MEP1, Feature.ID == "ENSG00000162496" )
+#logfold x -->  RES_HSC_CMP1 /  log fold y --> RES_CMP_MEP1
+
+#모든 과정에서 log fold change 값 유의미한 유전자 df 합치기 
+
+HSC_CMP_GMP_MEP1 <- RES_HSC_CMP1 %>% inner_join(RES_CMP_GMP1, by='Feature.ID') %>% 
+inner_join(RES_CMP_MEP1, by='Feature.ID')
+head(HSC_CMP_GMP_MEP1)
+dim(HSC_CMP_GMP_MEP1)    #23개 
+
+# log fold x -> RES_HSC_CMP1, log fold y -> RES_CMP_GMP1, log fold -> RES_CMP_MEP1)
+
+
+# 모든 과정에서 유미한 유전자의 log fold  값 추출하기 위해서 inner join 하기 
+
+HSC_CMP_log2 <- HSC_CMP_GMP_MEP1 %>% inner_join(RES_HSC_CMP1, by='Feature.ID')
+
+CMP_GMP_log2 <- HSC_CMP_GMP_MEP1 %>% inner_join(RES_CMP_GMP1, by='Feature.ID')
+
+CMP_MEP_log2 <- HSC_CMP_GMP_MEP1 %>% inner_join(RES_CMP_MEP1, by='Feature.ID')
+
+#Feature ID와 log2FC만 있는 새 데이터 프레임 만들기 
+HSC_CMP_logdf <- data.frame(HSC_CMP_log2$Feature.ID, HSC_CMP_log2$log2FoldChange.y.y)
+CMP_GMP_logdf <- data.frame(CMP_GMP_log2$Feature.ID, CMP_GMP_log2$log2FoldChange.y.y)
+CMP_MEP_logdf <- data.frame(CMP_MEP_log2$Feature.ID, CMP_MEP_log2$log2FoldChange.y.y)
+
+#세 과정 데이터프레임 병합 
+HSC_CMP_GMP_MEP_logdf <- HSC_CMP_logdf %>% inner_join(CMP_GMP_logdf, by='Feature.ID') %>% 
+ inner_join(CMP_MEP_logdf, by='Feature.ID')
+
+#heat map 그리기 위한 matrix 만들기 
+HSC_CMP_GMP_MEP_matrix <- HSC_CMP_GMP_MEP_logdf %>% select(-Feature.ID) %>% as.matrix()
+rownames(HSC_CMP_GMP_MEP_matrix) <- HSC_CMP_GMP_MEP_logdf$Feature.ID
+
+#heatmap 그리기 
+heatmap(HSC_CMP_GMP_MEP_matrix, scale = "row")
+library(pheatmap)
+pheatmap(HSC_CMP_GMP_MEP_matrix, scale="row")
