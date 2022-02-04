@@ -1,0 +1,47 @@
+# 단계별로 합친 데이터 만들기 
+row_HSC_CMP <- res_HSC_CMP %>% as.data.frame() %>% mutate(Feature.ID = rownames(res_HSC_CMP)) %>%
+	select(Feature.ID, baseMean:padj)
+row_CMP_GMP <- res_CMP_GMP %>% as.data.frame() %>% mutate(Feature.ID = rownames(res_CMP_GMP)) %>%
+	select(Feature.ID, baseMean:padj)
+row_CMP_MEP <- res_CMP_MEP %>% as.data.frame() %>% mutate(Feature.ID = rownames(res_CMP_MEP)) %>%
+	select(Feature.ID, baseMean:padj)
+
+HSC_CMP_GMP_merge <- row_HSC_CMP %>% inner_join(row_CMP_GMP, by='Feature.ID')
+HSC_CMP_MEP_merge <- row_HSC_CMP %>% inner_join(row_CMP_MEP, by='Feature.ID')
+HSC_CMP_GMP_MEP_merge <- row_HSC_CMP %>% inner_join(row_CMP_GMP, by='Feature.ID') %>% 
+ 	inner_join(row_CMP_MEP, by='Feature.ID')
+
+
+# heatmap 그릴 matrix 만들기
+HSC_CMP_GMP_matrix <- HSC_CMP_GMP_merge %>% select(log2FoldChange.x, log2FoldChange.y) %>% 
+	rename(log2FoldChange.x = 'HSC->CMP_log2FC', log2FoldChange.y = 'CMP->GMP_log2FC') %>% as.matrix()
+rownames(HSC_CMP_GMP_matrix) <- HSC_CMP_GMP_merge$Feature.ID
+
+HSC_CMP_MEP_matrix <- HSC_CMP_MEP_merge %>% select(log2FoldChange.x, log2FoldChange.y) %>% 
+	rename(log2FoldChange.x = 'HSC->CMP_log2FC', log2FoldChange.y = 'CMP->MEP_log2FC') %>% as.matrix()
+rownames(HSC_CMP_MEP_matrix) <- HSC_CMP_MEP_merge$Feature.ID
+
+# 두 개,,,,
+HSC_CMP_GMP_MEP_matrix <- HSC_CMP_GMP_MEP_merge %>% select(log2FoldChange.x, log2FoldChange.y, 
+	log2FoldChange) %>% rename(log2FoldChange.x = 'HSC->CMP_log2FC', 
+	log2FoldChange.y = 'CMP->GMP_log2FC',log2FoldChange = 'CMP->MEP_log2FC') %>% as.matrix()
+rownames(HSC_CMP_GMP_MEP_matrix) <- HSC_CMP_GMP_MEP_merge$Feature.ID
+
+
+HSC_CMP_GMP_MEP_matrix <- HSC_CMP_GMP_MEP_merge %>% select(log2FoldChange.y, log2FoldChange.x, 
+	log2FoldChange) %>% rename(log2FoldChange.y = 'CMP->GMP_log2FC', 
+	log2FoldChange.x = 'HSC_CMP_log2FC',log2FoldChange = 'CMP->MEP_log2FC') %>% as.matrix()
+rownames(HSC_CMP_GMP_MEP_matrix) <- HSC_CMP_GMP_MEP_merge$Feature.ID
+
+library(pheatmap)
+
+my_colors = brewer.pal(n = 11, name = "RdBu")
+my_colors = colorRampPalette(my_colors)(50)
+my_colors = rev(my_colors)
+pheatmap(HSC_CMP_GMP_MEP_matrix,
+	scale = "row",
+	Rowv = FALSE,
+	color = colorRampPalette(c("blue","white","red"))(50),
+	show_rownames = FALSE,
+	angle_col = '45',
+	fontsize_row = 2)
