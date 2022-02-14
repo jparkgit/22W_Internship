@@ -398,3 +398,26 @@ DEG_log2FC %>% ggplot(aes(x = index_stage, y = log2FC, group = deg_common_3.Feat
 	scale_color_discrete(name = "Feature.ID") + 
 	labs(x = 'Differentiation Stage', y = 'log2FoldChange',
 		title = 'log2FoldChange of DEG', subtitle = 'by Differentiation stage')
+
+
+
+HSC_CMP_GMP_merge #13144개 
+
+up_up_deg <- HSC_CMP_GMP_merge %>% 
+filter(log2FoldChange.x > 1, log2FoldChange.y >1, padj.x < 0.1,  padj.y < 0.1) 
+
+up_down_deg <- HSC_CMP_GMP_merge %>% 
+filter(log2FoldChange.x > 1, log2FoldChange.y < -1,  padj.x < 0.1,  padj.y < 0.1)
+
+down_up_deg <- HSC_CMP_GMP_merge %>% 
+filter(log2FoldChange.x < -1, log2FoldChange.y > 1,  padj.x < 0.1,  padj.y < 0.1)
+
+
+down_down_deg <- HSC_CMP_GMP_merge %>% 
+filter(log2FoldChange.x < -1, log2FoldChange.y < -1,  padj.x < 0.1, padj.y < 0.1)
+
+
+up up #11개 
+up down #36개 
+down up #16개 
+down down #51개 
