@@ -402,6 +402,20 @@ DEG_log2FC %>% ggplot(aes(x = index_stage, y = log2FC, group = deg_common_3.Feat
 
 #UP DEG, DOWN DEG 뽑기 
 
+# Grouping by stage of differentiation
+row_HSC_CMP <- res_HSC_CMP %>% as.data.frame() %>% mutate(Feature.ID = rownames(res_HSC_CMP)) %>%
+	select(Feature.ID, baseMean:padj)
+row_CMP_GMP <- res_CMP_GMP %>% as.data.frame() %>% mutate(Feature.ID = rownames(res_CMP_GMP)) %>%
+	select(Feature.ID, baseMean:padj)
+row_CMP_MEP <- res_CMP_MEP %>% as.data.frame() %>% mutate(Feature.ID = rownames(res_CMP_MEP)) %>%
+	select(Feature.ID, baseMean:padj)
+
+HSC_CMP_GMP_merge <- row_HSC_CMP %>% inner_join(row_CMP_GMP, by='Feature.ID')
+HSC_CMP_MEP_merge <- row_HSC_CMP %>% inner_join(row_CMP_MEP, by='Feature.ID')
+HSC_CMP_GMP_MEP_merge <- row_HSC_CMP %>% inner_join(row_CMP_GMP, by='Feature.ID') %>% 
+ 	inner_join(row_CMP_MEP, by='Feature.ID')
+
+
 HSC_CMP_GMP_merge #13144개 
 
 up_up_deg <- HSC_CMP_GMP_merge %>% 
@@ -417,6 +431,10 @@ filter(log2FoldChange.x < -1, log2FoldChange.y > 1,  padj.x < 0.1,  padj.y < 0.1
 down_down_deg <- HSC_CMP_GMP_merge %>% 
 filter(log2FoldChange.x < -1, log2FoldChange.y < -1,  padj.x < 0.1, padj.y < 0.1)
 
+upup <- up_up_deg[,1]
+updown <- up_down_deg[,1]
+downup <- down_up_deg[,1]
+downdown <- down_down_deg[,1]
 
 up up #11개 
 up down #36개 
