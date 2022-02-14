@@ -400,6 +400,7 @@ DEG_log2FC %>% ggplot(aes(x = index_stage, y = log2FC, group = deg_common_3.Feat
 		title = 'log2FoldChange of DEG', subtitle = 'by Differentiation stage')
 
 
+#UP DEG, DOWN DEG 뽑기 
 
 HSC_CMP_GMP_merge #13144개 
 
