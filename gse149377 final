@@ -1,0 +1,324 @@
+##get rawcount file from GEO
+
+wget url #in terminal
+gse149377 <- read.delim(file="GSE149377_iPSCderived_myeloid_cells_counts.gct.gz", skip=2)
+
+#converting entrez_id into ensembl_gene_id
+
+library(biomaRt)
+hu.ensembl = useMart(biomart = 'ensembl', dataset = 'hsapiens_gene_ensembl') 
+listFilters(hu.ensembl)
+
+df <- data.frame(gse149377$Name)
+names(df)[1] <- 'Geneid'
+G_list <- getBM(attributes= c("entrezgene_id","ensembl_gene_id"),values=df$Geneid, mart = hu.ensembl, useCache = FALSE)
+gse149377$ensembl_gene_id = ""
+gse149377["ensembl_gene_id"] = lapply("ensembl_gene_id", function(x) G_list[[x]][match(df$Geneid, G_list$entrezgene_id)])
+
+#결과: 1열은 Name, 2열은 description, 53열은 ensembl_gene_id
+
+##Protein Coding Gene filtering
+library(dplyr)
+
+#upload gene information file
+ann = rtracklayer::import("/spstorage/DB/NGS_reference/GRCh38_v34/gencode.v34.primary_assembly.annotation.gtf") %>% as.data.frame()
+pcg = ann %>% filter(gene_type == "protein_coding") %>% distinct(gene_id)
+pcg$gene_id <- gsub("\\.[0-9]+","",pcg$gene_id)
+
+#applying to gse data
+pcglist <- ifelse(gse149377$ensembl_gene_id %in% pcg$gene_id, "True", "False")
+gse149377_pcg <- gse149377[which(pcglist == 'True'),] #nrow() : 17172
+ips_pcg <- gse149377_pcg %>% select(ensembl_gene_id, contains("IPS"))
+pbmc_pcg <- gse149377_pcg %>% select(ensembl_gene_id, contains("PBMC"))
+
+
+#gene-expression-average
+## Finding data with an average expression of 5 or higher
+
+#IPS
+IPS_pcg <- ips_pcg
+IPS_pcg$rowMEAN = ""
+IPS_pcg$rowMEAN <- rowMeans(IPS_pcg[,-c(1,29)])
+IPS_pcg <- IPS_pcg %>% filter(rowMEAN >=5) %>% select(-rowMEAN) #nrow(): 13678
+
+
+ips_m0 <- IPS_pcg %>% select(ensembl_gene_id, contains("m0"))
+ips_m1 <- IPS_pcg %>% select(ensembl_gene_id, contains("m1"))
+ips_m2 <- IPS_pcg %>% select(ensembl_gene_id, contains("m2"))
+ips_mono <- IPS_pcg %>% select(ensembl_gene_id, contains("monocytes"))
+ips_micro <- IPS_pcg %>% select(ensembl_gene_id, contains("microglia"))
+
+
+#PBMC
+PBMC_pcg <- pbmc_pcg
+PBMC_pcg$rowMEAN = ""
+PBMC_pcg$rowMEAN <- rowMeans(PBMC_pcg[,-c(1,25)])
+PBMC_pcg <- PBMC_pcg %>% filter(rowMEAN >=5) %>% select(-rowMEAN) #nrow() : 13032
+
+
+pbmc_m0 <- PBMC_pcg %>% select(ensembl_gene_id, contains("m0"))
+pbmc_m1 <- PBMC_pcg %>% select(ensembl_gene_id, contains("m1"))
+pbmc_m2 <- PBMC_pcg %>% select(ensembl_gene_id, contains("m2"))
+pbmc_mono <- PBMC_pcg %>% select(ensembl_gene_id, contains("monocytes"))
+
+#join the data for DESeq
+
+library(dplyr)
+
+#IPS
+ips_m0_m1 <- cbind(ips_m0,ips_m1) %>% select(-7)
+ips_m0_m2 <- cbind(ips_m0,ips_m2) %>% select(-7)
+ips_mono_m0 <- cbind(ips_mono,ips_m0) %>% select(-9)
+ips_mono_micro <- cbind(ips_mono,ips_micro) %>% select(-9)
+
+#PBMC
+pbmc_m0_m1 <- cbind(pbmc_m0,pbmc_m1) %>% select(-7)
+pbmc_m0_m2 <- cbind(pbmc_m0,pbmc_m2) %>% select(-7)
+pbmc_mono_m0 <- cbind(pbmc_mono,pbmc_m0) %>% select(-10)
+
+
+#create metadata for DESeq
+
+#get sample names as a list
+nameslist <- list()
+nameslist <- colnames(gse149377[,-c(1,2,53)])
+
+#control vector
+condition <- c("m0","m1","m2","m0","m1","m2","m0","m1","m2","m0","m1","m2","m0","m1","m2","monocytes","monocytes","monocytes","monocytes","monocytes","monocytes","monocytes","monocytes","monocytes","monocytes","monocytes","monocytes","monocytes","monocytes","monocytes","microglia","microglia","microglia","microglia","microglia","m0","m1","m2","m0","m1","m2","m0","m1","m2","m0","m1","m2","m0","m1","m2")
+
+
+
+#TOTAL
+meta_data0 <- as.data.frame(condition)
+rownames(meta_data0) <- nameslist  # 50 row, 1 column
+
+
+#IPS
+names <- colnames(ips_m0_m1[,-1])
+meta_ips_m0_m1 <- data.frame(names)
+meta_ips_m0_m1$condition = ""
+meta_ips_m0_m1$condition <- ifelse(grepl("m0", meta_ips_m0_m1$names), "m0", "m1")
+rownames(meta_ips_m0_m1) <- meta_ips_m0_m1$names
+meta_ips_m0_m1 <- meta_ips_m0_m1 %>% select(-names)
+
+names <- colnames(ips_m0_m2[,-1])
+meta_ips_m0_m2 <- data.frame(names)
+meta_ips_m0_m2$condition = ""
+meta_ips_m0_m2$condition <- ifelse(grepl("m0", meta_ips_m0_m2$names), "m0", "m2")
+rownames(meta_ips_m0_m2) <- meta_ips_m0_m2$names
+meta_ips_m0_m2 <- meta_ips_m0_m2 %>% select(-names)
+
+names <- colnames(ips_mono_m0[,-1])
+meta_ips_mono_m0 <- data.frame(names)
+meta_ips_mono_m0$condition = ""
+meta_ips_mono_m0$condition <- ifelse(grepl("m0", meta_ips_mono_m0$names), "m0", "mono")
+rownames(meta_ips_mono_m0) <- meta_ips_mono_m0$names
+meta_ips_mono_m0 <- meta_ips_mono_m0 %>% select(-names)
+
+names <- colnames(ips_mono_micro[,-1])
+meta_ips_mono_micro <- data.frame(names)
+meta_ips_mono_micro$condition = ""
+meta_ips_mono_micro$condition <- ifelse(grepl("monocytes", meta_ips_mono_micro$names), "mono", "micro")
+rownames(meta_ips_mono_micro) <- meta_ips_mono_micro$names
+meta_ips_mono_micro <- meta_ips_mono_micro %>% select(-names)
+
+
+#PBMC
+names <- colnames(pbmc_m0_m1[,-1])
+meta_pbmc_m0_m1 <- data.frame(names)
+meta_pbmc_m0_m1$condition = ""
+meta_pbmc_m0_m1$condition <- ifelse(grepl("m0", meta_pbmc_m0_m1$names), "m0", "m1")
+rownames(meta_pbmc_m0_m1) <- meta_pbmc_m0_m1$names
+meta_pbmc_m0_m1 <- meta_pbmc_m0_m1 %>% select(-names)
+
+names <- colnames(pbmc_m0_m2[,-1])
+meta_pbmc_m0_m2 <- data.frame(names)
+meta_pbmc_m0_m2$condition = ""
+meta_pbmc_m0_m2$condition <- ifelse(grepl("m0", meta_pbmc_m0_m2$names), "m0", "m2")
+rownames(meta_pbmc_m0_m2) <- meta_pbmc_m0_m2$names
+meta_pbmc_m0_m2 <- meta_pbmc_m0_m2 %>% select(-names)
+
+names <- colnames(pbmc_mono_m0[,-1])
+meta_pbmc_mono_m0 <- data.frame(names)
+meta_pbmc_mono_m0$condition = ""
+meta_pbmc_mono_m0$condition <- ifelse(grepl("m0", meta_pbmc_mono_m0$names), "m0", "mono")
+rownames(meta_pbmc_mono_m0) <- meta_pbmc_mono_m0$names
+meta_pbmc_mono_m0 <- meta_pbmc_mono_m0 %>% select(-names)
+
+
+#DESeq
+
+library(DESeq2)
+
+#IPS
+condition <- meta_ips_m0_m1$condition
+dds1 <- DESeqDataSetFromMatrix(countData = select(ips_m0_m1, -1), 
+colData = meta_ips_m0_m1, 
+design = ~condition)
+
+condition <- meta_ips_m0_m2$condition
+dds2 <- DESeqDataSetFromMatrix(countData = select(ips_m0_m2, -1), 
+colData = meta_ips_m0_m2, 
+design = ~condition)
+
+condition <- meta_ips_mono_m0$condition
+dds3 <- DESeqDataSetFromMatrix(countData = select(ips_mono_m0, -1), 
+colData = meta_ips_mono_m0, 
+design = ~condition)
+
+condition <- meta_ips_mono_micro$condition
+dds4 <- DESeqDataSetFromMatrix(countData = select(ips_mono_micro, -1), 
+colData = meta_ips_mono_micro, 
+design = ~condition)
+
+
+#PBMC
+condition <- meta_pbmc_m0_m1$condition
+dds5 <- DESeqDataSetFromMatrix(countData = select(pbmc_m0_m1, -1), 
+colData = meta_pbmc_m0_m1, 
+design = ~condition)
+
+condition <- meta_pbmc_m0_m2$condition
+dds6 <- DESeqDataSetFromMatrix(countData = select(pbmc_m0_m2, -1), 
+colData = meta_pbmc_m0_m2, 
+design = ~condition)
+
+condition <- meta_pbmc_mono_m0$condition
+dds7 <- DESeqDataSetFromMatrix(countData = select(pbmc_mono_m0, -1), 
+colData = meta_pbmc_mono_m0, 
+design = ~condition)
+
+condition <- NULL
+
+#save DESeq results
+
+#IPS
+dds_ips_m0_m1 <- DESeq(dds1)
+res_ips_m0_m1 <- results(dds_ips_m0_m1)
+
+dds_ips_m0_m2 <- DESeq(dds2)
+res_ips_m0_m2 <- results(dds_ips_m0_m2)
+
+
+dds_ips_mono_m0 <- DESeq(dds3)
+res_ips_mono_m0 <- results(dds_ips_mono_m0)
+
+dds_ips_mono_micro <- DESeq(dds4)
+res_ips_mono_micro <- results(dds_ips_mono_micro)
+
+#PBMC
+dds_pbmc_m0_m1 <- DESeq(dds5)
+res_pbmc_m0_m1 <- results(dds_pbmc_m0_m1)
+
+dds_pbmc_m0_m2 <- DESeq(dds6)
+res_pbmc_m0_m2 <- results(dds_pbmc_m0_m2)
+
+
+dds_pbmc_mono_m0 <- DESeq(dds7)
+res_pbmc_mono_m0 <- results(dds_pbmc_mono_m0)
+
+
+#make rownames for the results
+rownames(res_ips_m0_m2) <- ips_m0_m2$ensembl_gene_id
+rownames(res_ips_m0_m1) <- ips_m0_m1$ensembl_gene_id
+rownames(res_ips_mono_m0) <- ips_mono_m0$ensembl_gene_id
+rownames(res_ips_mono_micro) <- ips_mono_micro$ensembl_gene_id
+
+rownames(res_pbmc_m0_m1) <- pbmc_m0_m1$ensembl_gene_id
+rownames(res_pbmc_m0_m2) <- pbmc_m0_m2$ensembl_gene_id
+rownames(res_pbmc_mono_m0) <- pbmc_mono_m0$ensembl_gene_id
+
+
+#filtering the results
+res1 <- res_ips_m0_m1 %>% as.data.frame %>% filter(abs(log2FoldChange) > 2, padj < 0.05) # 1049
+up_res1 <- res_ips_m0_m1 %>% as.data.frame %>% filter(log2FoldChange > 2, padj < 0.05) # 550
+down_res1 <-res_ips_m0_m1 %>% as.data.frame %>% filter(log2FoldChange < -2, padj < 0.05) # 499
+
+res2 <- res_ips_m0_m2 %>% as.data.frame %>% filter(abs(log2FoldChange) > 2, padj < 0.05) # 928
+up_res2 <- res_ips_m0_m2 %>% as.data.frame %>% filter(log2FoldChange > 2, padj < 0.05) # 590
+down_res2 <-res_ips_m0_m2 %>% as.data.frame %>% filter(log2FoldChange < -2, padj < 0.05) # 338
+
+res3 <- res_ips_mono_m0 %>% as.data.frame %>% filter(abs(log2FoldChange) > 2, padj < 0.05) # 542
+up_res3 <- res_ips_mono_m0 %>% as.data.frame %>% filter(log2FoldChange > 2, padj < 0.05) # 334
+down_res3 <-res_ips_mono_m0 %>% as.data.frame %>% filter(log2FoldChange < -2, padj < 0.05) # 208
+
+res4 <- res_ips_mono_micro %>% as.data.frame %>% filter(abs(log2FoldChange) > 2, padj < 0.05) # 1193
+up_res4 <- res_ips_mono_micro %>% as.data.frame %>% filter(log2FoldChange > 2, padj < 0.05) # 381
+down_res4 <-res_ips_mono_micro %>% as.data.frame %>% filter(log2FoldChange < -2, padj < 0.05) # 812
+
+
+res5 <- res_pbmc_m0_m1 %>% as.data.frame %>% filter(abs(log2FoldChange) > 2, padj < 0.05) # 1379
+up_res5 <- res_pbmc_m0_m1 %>% as.data.frame %>% filter(log2FoldChange > 2, padj < 0.05) # 712
+down_res5 <-res_pbmc_m0_m1 %>% as.data.frame %>% filter(log2FoldChange < -2, padj < 0.05) #667
+
+res6 <- res_pbmc_m0_m2 %>% as.data.frame %>% filter(abs(log2FoldChange) > 2, padj < 0.05) # 1330
+up_res6 <- res_pbmc_m0_m2 %>% as.data.frame %>% filter(log2FoldChange > 2, padj < 0.05) # 716
+down_res6 <-res_pbmc_m0_m2 %>% as.data.frame %>% filter(log2FoldChange < -2, padj < 0.05) # 614
+
+res7 <- res_pbmc_mono_m0 %>% as.data.frame %>% filter(abs(log2FoldChange) > 2, padj < 0.05) # 2004
+up_res7 <- res_pbmc_mono_m0 %>% as.data.frame %>% filter(log2FoldChange > 2, padj < 0.05) # 517
+down_res7 <-res_pbmc_mono_m0 %>% as.data.frame %>% filter(log2FoldChange < -2, padj < 0.05) # 1487
+
+#save gene id for the DESeq results
+
+res1$ensembl_gene_id=""
+res1$ensembl_gene_id <- rownames(res1)
+up_res1$ensembl_gene_id=""
+up_res1$ensembl_gene_id <- rownames(up_res1)
+down_res1$ensembl_gene_id=""
+down_res1$ensembl_gene_id <- rownames(down_res1)
+
+
+total_deg_1 <- rownames(res1)
+up_deg_1 <- rownames(up_res1)
+down_deg_1 <- rownames(down_res1)
+
+#1~7 반복
+
+upup_m1 <- Reduce(intersect, list(up_deg_1,up_deg_3))
+upup_m2 <- Reduce(intersect, list(up_deg_2,up_deg_3))
+updown_m1 <- Reduce(intersect, list(down_deg_1,up_deg_3))
+updown_m2 <- Reduce(intersect, list(down_deg_2,up_deg_3))
+
+downup_m1 <- Reduce(intersect, list(up_deg_1,down_deg_3))
+downup_m2 <- Reduce(intersect, list(up_deg_2,down_deg_3))
+downdown_m1 <- Reduce(intersect, list(down_deg_1,down_deg_3))
+downdown_m2 <- Reduce(intersect, list(down_deg_2,down_deg_3))
+
+
+
+
+#create TPM data
+
+library(tidyverse)
+
+load('/spstorage/USERS/sung/projects/DEGanalysis/Genelength.RData')
+Genelength <- rownames_to_column(genelength, var='ensembl_gene_id')
+
+#join original data with Gene Id
+gse149377_length <- gse149377_pcg %>% inner_join(Genelength, by='ensembl_gene_id')
+
+#create gene & count data
+gse149377_genes <- gse149377_length[,c(53,54)]
+gse149377_counts <- gse149377_pcg[,-c(1,2,53)]
+
+
+#create a function for TPM
+tpm <- function(counts, length){
+	rpk <- counts/(length/10^4)
+	coef <- sum(rpk)/10^6
+	rpk/coef
+}
+
+tpms <- apply(counts, 2, function(x) tpm(x, gse149377_genes$length))
+
+#calculate
+gse149377_tpm <- data.frame(gse149377_genes$ensembl_gene_id, tpms)
+colnames(gse149377_tpm)[1] <- "ensembl_gene_id"
+
+
+
+#filter tpm data
+gse149377_tpmcut <-  gse149377_tpm %>% mutate(rowmeans = rowMeans(gse149377_tpm[,-1])) %>% filter(rowmeans > 2) %>% select(-rowmeans) #10771 rows
+
+
