@@ -1,26 +1,59 @@
 ##gse149377
 
-v1 <- IDs %>% filter(IDs$ensembl_gene_id %in% up_test1$ensembl_gene_id)
-dummy <- up_test1 %>% left_join(IDs, group by "ensembl_gene_id")
-
-#import data 
-library(clusterProfiler)
-mdb <- read.gmt("/spstorage/DB/MSigDB/v7.2/c2.cp.v7.4.entrez.gmt")
-mdb_pathways <- split(mdb$gene, mdb$ont)
-
-
 #create dataframe with entrez id
-
 IDs <- as.data.frame(gse149377$Name)
 colnames(IDs) <- "entrez_gene_id"
 IDs$ensembl_gene_id =""
 IDs$ensembl_gene_id <- gse149377$ensembl_gene_id
 
 
+#import data 
+library(clusterProfiler)
+mdb <- read.gmt("/spstorage/DB/MSigDB/v7.2/c2.cp.v7.4.entrez.gmt")
+mdb_pathways <- split(mdb$gene, mdb$ont)
+
+###########무시(left join중복을 없애고자 하는 노력이었음)
+v1 <- IDs %>% filter(IDs$ensembl_gene_id %in% up_test1$ensembl_gene_id)
+dummy <- up_test1 %>% left_join(IDs, group by "ensembl_gene_id")
+###########
+
+#create dataframe with entrez id
 up_deg_entrez1 <- res1 %>% filter(res1$ensembl_gene_id %in% up_deg_1)
 up_deg_entrez1_names <- up_deg_entrez1$Name
 up_test1 <- as.data.frame(up_deg_entrez1)
 up_test1 <- up_test1 %>% left_join(IDs, by="ensembl_gene_id")
+
+up_deg_entrez2 <- res2 %>% filter(res2$ensembl_gene_id %in% up_deg_2)
+up_deg_entrez2_names <- up_deg_entrez2$Name
+up_test2 <- as.data.frame(up_deg_entrez2)
+up_test2 <- up_test2 %>% left_join(IDs, by="ensembl_gene_id")
+
+
+down_deg_entrez1 <- res1 %>% filter(res1$ensembl_gene_id %in% down_deg_1)
+down_deg_entrez1_names <- down_deg_entrez1$Name
+down_test1 <- as.data.frame(down_deg_entrez1)
+down_test1 <- down_test1 %>% left_join(IDs, by="ensembl_gene_id")
+
+
+down_deg_entrez2 <- res2 %>% filter(res2$ensembl_gene_id %in% down_deg_2)
+down_deg_entrez2_names <- down_deg_entrez2$Name
+down_test2 <- as.data.frame(down_deg_entrez2)
+down_test2 <- down_test2 %>% left_join(IDs, by="ensembl_gene_id")
+
+
+up_deg_entrez3 <- res3 %>% filter(res3$ensembl_gene_id %in% up_deg_3)
+up_deg_entrez3_names <- up_deg_entrez3$Name
+up_test3 <- as.data.frame(up_deg_entrez3)
+up_test3 <- up_test3 %>% left_join(IDs, by="ensembl_gene_id")
+
+
+down_deg_entrez3 <- res3 %>% filter(res3$ensembl_gene_id %in% down_deg_3)
+down_deg_entrez3_names <- down_deg_entrez3$Name
+down_test3 <- as.data.frame(down_deg_entrez3)
+down_test3 <- down_test3 %>% left_join(IDs, by="ensembl_gene_id")
+
+
+
 
 
 library(fgsea)
