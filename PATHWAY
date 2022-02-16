@@ -1,0 +1,296 @@
+##gse149377
+
+v1 <- IDs %>% filter(IDs$ensembl_gene_id %in% up_test1$ensembl_gene_id)
+dummy <- up_test1 %>% left_join(IDs, group by "ensembl_gene_id")
+
+#import data 
+library(clusterProfiler)
+mdb <- read.gmt("/spstorage/DB/MSigDB/v7.2/c2.cp.v7.4.entrez.gmt")
+mdb_pathways <- split(mdb$gene, mdb$ont)
+
+
+#create dataframe with entrez id
+
+IDs <- as.data.frame(gse149377$Name)
+colnames(IDs) <- "entrez_gene_id"
+IDs$ensembl_gene_id =""
+IDs$ensembl_gene_id <- gse149377$ensembl_gene_id
+
+
+up_deg_entrez1 <- res1 %>% filter(res1$ensembl_gene_id %in% up_deg_1)
+up_deg_entrez1_names <- up_deg_entrez1$Name
+up_test1 <- as.data.frame(up_deg_entrez1)
+up_test1 <- up_test1 %>% left_join(IDs, by="ensembl_gene_id")
+
+
+library(fgsea)
+ranks_up_m1 <- pull(up_test1, stat)
+names(ranks_up_m1) <- up_test1$entrez_gene_id
+f_up_m1 <- fgsea(mdb_pathways, ranks_up_m1, minSize = 5, maxSize = 500, nperm = 1000)
+
+ranks_up_m2 <- pull(up_test2, stat)
+names(ranks_up_m2) <- up_test2$entrez_gene_id
+f_up_m2 <- fgsea(mdb_pathways, ranks_up_m2, minSize = 5, maxSize = 500, nperm = 1000)
+
+ranks_down_m1 <- pull(down_test1, stat)
+names(ranks_down_m1) <- down_test1$entrez_gene_id
+f_down_m1 <- fgsea(mdb_pathways, ranks_down_m1, minSize = 5, maxSize = 500, nperm = 1000)
+
+ranks_down_m2 <- pull(down_test2, stat)
+names(ranks_down_m2) <- down_test2$entrez_gene_id
+f_down_m2 <- fgsea(mdb_pathways, ranks_down_m2, minSize = 5, maxSize = 500, nperm = 1000)
+
+ranks_up_3 <- pull(up_test3, stat)
+names(ranks_up_3) <- up_test3$entrez_gene_id
+f_up_3 <- fgsea(mdb_pathways, ranks_up_3, minSize = 5, maxSize = 500, nperm = 1000)
+
+ranks_down_3 <- pull(down_test3, stat)
+names(ranks_down_3) <- down_test3$entrez_gene_id
+f_down_3 <- fgsea(mdb_pathways, ranks_down_3, minSize = 5, maxSize = 500, nperm = 1000)
+
+
+#heatmap (필요한 자료: x축이 up/down deg , y축이 pathway)
+
+#pathways as a vector
+up_v1 <- f_up_m1$pathway
+up_v2 <- f_up_m2$pathway
+down_v1 <- f_down_m1$pathway
+down_v2 <- f_down_m2$pathway
+up_v3 <- f_up_3$pathway
+down_v3 <- f_down_3$pathway
+
+#common pathways
+c_m1 <- Reduce(intersect, list(up_v1,down_v1,up_v3,down_v3))
+c_m2 <- Reduce(intersect, list(up_v2,down_v2,up_v3,down_v3))
+
+
+#create dataframe
+path_m1 <- as.data.frame(c_m1)
+names(path_m1) <- "pathway"
+path_m1$up_m1_m0 = ""
+path_m1$down_m1_m0 = ""
+path_m1$up_m0_mono = ""
+path_m1$down_m0_mono = ""
+
+path_m1$up_m1_m0 <- f_up_m1 %>% filter(f_up_m1$pathway %in% c_m1) %>% select(pval)
+path_m1$down_m1_m0 <- f_down_m1 %>% filter(f_down_m1$pathway %in% c_m1) %>% select(pval)
+path_m1$up_m0_mono <- f_up_3 %>% filter(f_up_3$pathway %in% c_m1) %>% select(pval)
+path_m1$down_m0_mono <- f_down_3 %>% filter(f_down_3$pathway %in% c_m1) %>% select(pval)
+
+colnames(path_m1) <- c("pathway","up_m1_m0","down_m1_m0","up_m0_mono","down_m0_mono")
+rownames(path_m1) <- path_m1$pathway
+path_m1 <- path_m1[,-1]
+
+#create a matrix
+m1_matrix <- as.matrix(path_m1)
+
+
+
+##gse113182
+library(tidyverse)
+library(clusterProfiler)
+library(fgsea)
+library(biomaRt)
+
+hu.ensembl = useMart(biomart = 'ensembl', dataset = 'hsapiens_gene_ensembl') 
+listFilters(hu.ensembl) 
+map = getBM(attributes = c('entrezgene_id', 'ensembl_gene_id'), mart = hu.ensembl, useCache = FALSE)
+
+# mSigDB pathway list 준비
+#library(clusterProfiler)
+#library(tidyverse)
+mdb <- read.gmt("/spstorage/DB/MSigDB/v7.2/c2.cp.v7.4.entrez.gmt")
+mdb_pathways <- split(mdb$gene, mdb$ont)
+
+## HSC->CMP (1) UP DEG
+# DEG ensembl, entrez id dataframe 만들기
+#library(fgsea)
+df_up_1 <- res_HSC_CMP %>% as.data.frame %>%
+	rownames_to_column("ensembl_gene_id") %>%
+	left_join(map, by = "ensembl_gene_id") %>% 
+	filter(log2FoldChange > 1, padj < 0.1, !is.na(entrezgene_id)) %>%
+	arrange(stat) 
+
+ranks_up_1 <- pull(df_up_1, stat)
+names(ranks_up_1) <- df_up_1$entrezgene_id
+
+# gsea
+fgseaRes_up_1 <- fgsea(mdb_pathways, ranks_up_1, minSize = 15, maxSize = 500, nperm = 1000)
+	# -> 84개 중 pval 0.1 이하 50개 / padj 0.1 이하 26개
+
+# enrichment score 그래프 그리기
+library(ggplot2)
+fgseaRes_up_1 %>% ggplot(aes(reorder(pathway, NES), NES)) +
+	geom_col(aes(fill = pval < 0.1)) +
+	coord_flip() +
+	labs(x = "Pathway", y = "Normalized Enrichment Score",
+		title = "Hallmark pathways NES from GSEA")
+plotEnrichment(mdb_pathways[["REACTOME_CELLULAR_RESPONSE_TO_EXTERNAL_STIMULI"]],
+ranks_up_1)
+
+
+## HSC->CMP (1) DOWN DEG
+df_down_1 <- res_HSC_CMP %>% as.data.frame %>%
+	rownames_to_column("ensembl_gene_id") %>%
+	left_join(map, by = "ensembl_gene_id") %>% 
+	filter(log2FoldChange < -1, padj < 0.1, !is.na(entrezgene_id)) %>%
+	arrange(stat) 
+
+ranks_down_1 <- pull(df_down_1, stat)
+names(ranks_down_1) <- df_down_1$entrezgene_id
+
+# gsea
+fgseaRes_down_1 <- fgsea(mdb_pathways, ranks_down_1, minSize = 15, maxSize = 500, nperm = 1000)
+	# -> 56개 중 pval 0.1 이하 19개 / padj 0.1 이하 11개
+
+# enrichment score 그래프 그리기
+fgseaRes_down_1 %>% ggplot(aes(reorder(pathway, NES), NES)) +
+	geom_col(aes(fill = pval < 0.1)) +
+	coord_flip() +
+	labs(x = "Pathway", y = "Normalized Enrichment Score",
+		title = "Hallmark pathways NES from GSEA")
+
+
+## CMP->GMP (2) UP DEG
+df_up_2 <- res_CMP_GMP %>% as.data.frame %>%
+	rownames_to_column("ensembl_gene_id") %>%
+	left_join(map, by = "ensembl_gene_id") %>% 
+	filter(log2FoldChange > 1, padj < 0.1, !is.na(entrezgene_id)) %>%
+	arrange(stat) 
+
+ranks_up_2 <- pull(df_up_2, stat)
+names(ranks_up_2) <- df_up_2$entrezgene_id
+
+# gsea
+fgseaRes_up_2 <- fgsea(mdb_pathways, ranks_up_2, minSize = 5, maxSize = 500, nperm = 1000)
+	# -> 39개 중 pval 0.1 이하 7개 / padj 0.1 이하 0개
+fgseaRes_up_2 <- fgsea(mdb_pathways, ranks_up_2, maxSize = 500, nperm = 1000)
+	# -> 694개 중 pval 0.1 이하 70개 / padj 0.1 이하 0개
+
+
+## CMP->GMP (2) DOWN DEG
+df_down_2 <- res_CMP_GMP %>% as.data.frame %>%
+	rownames_to_column("ensembl_gene_id") %>%
+	left_join(map, by = "ensembl_gene_id") %>% 
+	filter(log2FoldChange < -1, padj < 0.1, !is.na(entrezgene_id)) %>%
+	arrange(stat) 
+
+ranks_down_2 <- pull(df_down_2, stat)
+names(ranks_down_2) <- df_down_2$entrezgene_id
+
+fgseaRes_down_2 <- fgsea(mdb_pathways, ranks_down_2, minSize = 5, maxSize = 500, nperm = 1000)
+	# -> 74개 중 pval 0.1 이하 11개 / padj 0.1 이하 0개
+
+#pathways as a vector
+up_v1 <- fgseaRes_up_1$pathway
+up_v2 <- fgseaRes_up_2$pathway
+down_v1 <- fgseaRes_down_1$pathway
+down_v2 <- fgseaRes_down_2$pathway
+
+##common pathways
+c_vector <- Reduce(intersect, list(up_v1,down_v1,up_v2,down_v2))
+
+
+#create dataframe
+path_113182 <- as.data.frame(c_vector)
+names(path_113182) <- "pathway"
+path_113182$a = ""
+path_113182$b = ""
+path_113182$c = ""
+path_113182$d = ""
+
+path_113182$a <- fgseaRes_up_1 %>% filter(fgseaRes_up_1$pathway %in% c_vector) %>% select(pval)
+path_113182$b <- fgseaRes_down_1 %>% filter(fgseaRes_down_1$pathway %in% c_vector) %>% select(pval)
+path_113182$c <- fgseaRes_up_2 %>% filter(fgseaRes_up_2 $pathway %in% c_vector) %>% select(pval)
+path_113182$d <- fgseaRes_down_2 %>% filter(fgseaRes_down_2$pathway %in% c_vector) %>% select(pval)
+
+###########################무시
+v0 <- fgseaRes_up_1 %>% filter(fgseaRes_up_1$pathway %in% c_vector)
+v0 <- v0[,2]
+path_113182$up1 <- v0
+
+v0 <- fgseaRes_down_1 %>% filter(fgseaRes_down_1$pathway %in% c_vector)
+v0 <- v0[,2]
+path_113182$down1 <- v0
+
+v0 <- fgseaRes_up_2 %>% filter(fgseaRes_up_2 $pathway %in% c_vector)
+v0 <- v0[,2]
+path_113182$up2 <- v0
+
+v0 <- fgseaRes_down_2 %>% filter(fgseaRes_down_2$pathway %in% c_vector)
+v0 <- v0[,2]
+path_113182$down2 <- v0
+######################################
+
+colnames(path_113182) <- c("pathway","up_HSC_CMP","down_HSC_CMP","up_CMP_GMP","down_CMP_GMP")
+rownames(path_113182) <- path_113182$pathway
+path_113182 <- path_113182[,-1]
+
+
+#common pathway between two gse
+
+c_total_m1 <- Reduce(intersect, list(c_vector,c_m1)) #14개
+c_total_m2 <- Reduce(intersect, list(c_vector,c_m2)) #13개
+
+
+#create total dataframe
+
+#m1
+total_m1 <- as.data.frame(c_total_m1)
+names(total_m1) <- "pathway"
+total_m1$up1 = ""
+total_m1$up2 = ""
+total_m1$up3 = ""
+total_m1$up4= ""
+total_m1$down1 = ""
+total_m1$down2 = ""
+total_m1$down3 = ""
+total_m1$down4 = ""
+
+
+total_m1$up1 <- fgseaRes_up_1 %>% filter(fgseaRes_up_1$pathway %in% c_total_m1) %>% select(pval)
+total_m1$up2 <- fgseaRes_up_2 %>% filter(fgseaRes_up_2 $pathway %in% c_total_m1) %>% select(pval)
+total_m1$up3 <- f_up_3 %>% filter(f_up_3$pathway %in% c_total_m1) %>% select(pval)
+total_m1$up4 <- f_up_m1 %>% filter(f_up_m1$pathway %in% c_total_m1) %>% select(pval)
+total_m1$down1 <- fgseaRes_down_1 %>% filter(fgseaRes_down_1$pathway %in% c_total_m1) %>% select(pval)
+total_m1$down2 <- fgseaRes_down_2 %>% filter(fgseaRes_down_2$pathway %in% c_total_m1) %>% select(pval)
+total_m1$down3 <- f_down_3 %>% filter(f_down_3$pathway %in% c_total_m1) %>% select(pval)
+total_m1$down4 <- f_down_m1 %>% filter(f_down_m1$pathway %in% c_total_m1) %>% select(pval)
+
+colnames(total_m1) <- c("pathway","up_HSC_CMP","up_CMP_GMP","up_mono_m0","up_m0_m1","down_HSC_CMP","down_CMP_GMP","down_mono_m0","down_m0_m1")
+rownames(total_m1) <- total_m1$pathway
+total_m1 <- total_m1[,-1]
+
+
+#m2
+total_m2 <- as.data.frame(c_total_m2)
+names(total_m2) <- "pathway"
+total_m2$up1 = ""
+total_m2$up2 = ""
+total_m2$up3 = ""
+total_m2$up4= ""
+total_m2$down1 = ""
+total_m2$down2 = ""
+total_m2$down3 = ""
+total_m2$down4 = ""
+
+
+total_m2$up1 <- fgseaRes_up_1 %>% filter(fgseaRes_up_1$pathway %in% c_total_m2) %>% select(pval)
+total_m2$up2 <- fgseaRes_up_2 %>% filter(fgseaRes_up_2 $pathway %in% c_total_m2) %>% select(pval)
+total_m2$up3 <- f_up_3 %>% filter(f_up_3$pathway %in% c_total_m2) %>% select(pval)
+total_m2$up4 <- f_up_m1 %>% filter(f_up_m2$pathway %in% c_total_m2) %>% select(pval)
+total_m2$down1 <- fgseaRes_down_1 %>% filter(fgseaRes_down_1$pathway %in% c_total_m2) %>% select(pval)
+total_m2$down2 <- fgseaRes_down_2 %>% filter(fgseaRes_down_2$pathway %in% c_total_m2) %>% select(pval)
+total_m2$down3 <- f_down_3 %>% filter(f_down_3$pathway %in% c_total_m2) %>% select(pval)
+total_m2$down4 <- f_down_m1 %>% filter(f_down_m2$pathway %in% c_total_m2) %>% select(pval)
+
+colnames(total_m2) <- c("pathway","up_HSC_CMP","up_CMP_GMP","up_mono_m0","up_m0_m2","down_HSC_CMP","down_CMP_GMP","down_mono_m0","down_m0_m2")
+rownames(total_m2) <- total_m2$pathway
+total_m2 <- total_m2[,-1]
+
+
+
+
+
+
+
