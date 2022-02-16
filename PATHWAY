@@ -119,29 +119,27 @@ m1_matrix <- as.matrix(path_m1)
 
 
 
+#######################
 ##gse113182
-library(tidyverse)
-library(clusterProfiler)
-library(fgsea)
-library(biomaRt)
-
 hu.ensembl = useMart(biomart = 'ensembl', dataset = 'hsapiens_gene_ensembl') 
 listFilters(hu.ensembl) 
 map = getBM(attributes = c('entrezgene_id', 'ensembl_gene_id'), mart = hu.ensembl, useCache = FALSE)
 
+
 # mSigDB pathway list 준비
-#library(clusterProfiler)
+library(clusterProfiler)
 #library(tidyverse)
 mdb <- read.gmt("/spstorage/DB/MSigDB/v7.2/c2.cp.v7.4.entrez.gmt")
 mdb_pathways <- split(mdb$gene, mdb$ont)
 
+
 ## HSC->CMP (1) UP DEG
 # DEG ensembl, entrez id dataframe 만들기
-#library(fgsea)
+library(fgsea)
 df_up_1 <- res_HSC_CMP %>% as.data.frame %>%
 	rownames_to_column("ensembl_gene_id") %>%
 	left_join(map, by = "ensembl_gene_id") %>% 
-	filter(log2FoldChange > 1, padj < 0.1, !is.na(entrezgene_id)) %>%
+	filter(log2FoldChange >= 1, padj <= 0.1, !is.na(entrezgene_id)) %>%
 	arrange(stat) 
 
 ranks_up_1 <- pull(df_up_1, stat)
@@ -149,24 +147,24 @@ names(ranks_up_1) <- df_up_1$entrezgene_id
 
 # gsea
 fgseaRes_up_1 <- fgsea(mdb_pathways, ranks_up_1, minSize = 15, maxSize = 500, nperm = 1000)
-	# -> 84개 중 pval 0.1 이하 50개 / padj 0.1 이하 26개
+fgseaResTidy_up_1 <- fgseaRes_up_1 %>% as_tibble() %>%
+	arrange(desc(NES))
 
 # enrichment score 그래프 그리기
 library(ggplot2)
-fgseaRes_up_1 %>% ggplot(aes(reorder(pathway, NES), NES)) +
-	geom_col(aes(fill = pval < 0.1)) +
+fgseaResTidy_up_1 %>% ggplot(aes(reorder(pathway, NES), NES)) +
+	geom_col(aes(fill = padj <= 0.1)) +
 	coord_flip() +
 	labs(x = "Pathway", y = "Normalized Enrichment Score",
 		title = "Hallmark pathways NES from GSEA")
-plotEnrichment(mdb_pathways[["REACTOME_CELLULAR_RESPONSE_TO_EXTERNAL_STIMULI"]],
-ranks_up_1)
+
 
 
 ## HSC->CMP (1) DOWN DEG
 df_down_1 <- res_HSC_CMP %>% as.data.frame %>%
 	rownames_to_column("ensembl_gene_id") %>%
 	left_join(map, by = "ensembl_gene_id") %>% 
-	filter(log2FoldChange < -1, padj < 0.1, !is.na(entrezgene_id)) %>%
+	filter(log2FoldChange <= -1, padj <= 0.1, !is.na(entrezgene_id)) %>%
 	arrange(stat) 
 
 ranks_down_1 <- pull(df_down_1, stat)
@@ -174,21 +172,23 @@ names(ranks_down_1) <- df_down_1$entrezgene_id
 
 # gsea
 fgseaRes_down_1 <- fgsea(mdb_pathways, ranks_down_1, minSize = 15, maxSize = 500, nperm = 1000)
-	# -> 56개 중 pval 0.1 이하 19개 / padj 0.1 이하 11개
+fgseaResTidy_down_1 <- fgseaRes_down_1 %>% as_tibble() %>%
+	arrange(desc(NES))
 
 # enrichment score 그래프 그리기
-fgseaRes_down_1 %>% ggplot(aes(reorder(pathway, NES), NES)) +
-	geom_col(aes(fill = pval < 0.1)) +
+fgseaResTidy_down_1 %>% ggplot(aes(reorder(pathway, NES), NES)) +
+	geom_col(aes(fill = padj <= 0.1)) +
 	coord_flip() +
 	labs(x = "Pathway", y = "Normalized Enrichment Score",
 		title = "Hallmark pathways NES from GSEA")
+
 
 
 ## CMP->GMP (2) UP DEG
 df_up_2 <- res_CMP_GMP %>% as.data.frame %>%
 	rownames_to_column("ensembl_gene_id") %>%
 	left_join(map, by = "ensembl_gene_id") %>% 
-	filter(log2FoldChange > 1, padj < 0.1, !is.na(entrezgene_id)) %>%
+	filter(log2FoldChange >= 1, padj <= 0.1, !is.na(entrezgene_id)) %>%
 	arrange(stat) 
 
 ranks_up_2 <- pull(df_up_2, stat)
@@ -196,23 +196,40 @@ names(ranks_up_2) <- df_up_2$entrezgene_id
 
 # gsea
 fgseaRes_up_2 <- fgsea(mdb_pathways, ranks_up_2, minSize = 5, maxSize = 500, nperm = 1000)
-	# -> 39개 중 pval 0.1 이하 7개 / padj 0.1 이하 0개
-fgseaRes_up_2 <- fgsea(mdb_pathways, ranks_up_2, maxSize = 500, nperm = 1000)
-	# -> 694개 중 pval 0.1 이하 70개 / padj 0.1 이하 0개
+fgseaResTidy_up_2 <- fgseaRes_up_2 %>% as_tibble() %>%
+	arrange(desc(NES))
+
+# enrichment score 그래프 그리기
+fgseaResTidy_up_2 %>% ggplot(aes(reorder(pathway, NES), NES)) +
+	geom_col(aes(fill = padj <= 0.1)) +
+	coord_flip() +
+	labs(x = "Pathway", y = "Normalized Enrichment Score",
+		title = "Hallmark pathways NES from GSEA")
+
 
 
 ## CMP->GMP (2) DOWN DEG
 df_down_2 <- res_CMP_GMP %>% as.data.frame %>%
 	rownames_to_column("ensembl_gene_id") %>%
 	left_join(map, by = "ensembl_gene_id") %>% 
-	filter(log2FoldChange < -1, padj < 0.1, !is.na(entrezgene_id)) %>%
+	filter(log2FoldChange <= -1, padj <= 0.1, !is.na(entrezgene_id)) %>%
 	arrange(stat) 
 
 ranks_down_2 <- pull(df_down_2, stat)
 names(ranks_down_2) <- df_down_2$entrezgene_id
 
 fgseaRes_down_2 <- fgsea(mdb_pathways, ranks_down_2, minSize = 5, maxSize = 500, nperm = 1000)
-	# -> 74개 중 pval 0.1 이하 11개 / padj 0.1 이하 0개
+fgseaResTidy_down_2 <- fgseaRes_down_2 %>% as_tibble() %>%
+	arrange(desc(NES))
+
+# enrichment score 그래프 그리기
+fgseaResTidy_down_2 %>% ggplot(aes(reorder(pathway, NES), NES)) +
+	geom_col(aes(fill = padj <= 0.1)) +
+	coord_flip() +
+	labs(x = "Pathway", y = "Normalized Enrichment Score",
+		title = "Hallmark pathways NES from GSEA")
+#######################
+
 
 #pathways as a vector
 up_v1 <- fgseaRes_up_1$pathway
